@@ -7,8 +7,11 @@ import {
   ScrollRestoration,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router";
+import { useAuth, AuthProvider } from "./AuthContext";
 import { useEffect } from 'react';
+
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -46,23 +49,55 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 const role = import.meta.env.VITE_ROLE;
 
-export default function App() {
+const AppWithAuth = () => {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+  const { user, loading } = useAuth();
+
+
   useEffect(() => {
-    if (role === 'admin') {
-      navigate('/admin');
-    } else if (role === 'customer') {
-      navigate('/');
+    if (loading) return;
+
+    if (user) {
+      if (user.type === 'admin' && !location.pathname.startsWith('/admin')) {
+        navigate('/admin');
+      } else if (user.type === 'customer' && location.pathname.startsWith('/admin')) {
+        navigate('/');
+      }
+    } else if (role) {
+      if (role === 'admin' && !location.pathname.startsWith('/admin')) {
+        navigate('/admin');
+      } else if (role === 'customer' && location.pathname.startsWith('/admin')) {
+        navigate('/');
+      }
     }
-  }, [navigate]);
-  
+  }, [navigate, user, loading, location.pathname, role]);
+
   return <Outlet />;
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppWithAuth />
+    </AuthProvider>
+  );
 }
 
 // export default function App() {
+//   const navigate = useNavigate();
+  
+//   useEffect(() => {
+//     if (role === 'admin') {
+//       navigate('/admin');
+//     } else if (role === 'customer') {
+//       navigate('/');
+//     }
+//   }, [navigate]);
+  
 //   return <Outlet />;
 // }
+
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let message = "Oops!";

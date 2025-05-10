@@ -1,9 +1,12 @@
 package com.example.be_phela.service;
 
+import com.example.be_phela.dto.request.BranchCreateDTO;
 import com.example.be_phela.exception.DuplicateResourceException;
 import com.example.be_phela.exception.ResourceNotFoundException;
 import com.example.be_phela.interService.IBranchService;
+import com.example.be_phela.mapper.BranchMapper;
 import com.example.be_phela.model.Branch;
+import com.example.be_phela.model.enums.ProductStatus;
 import com.example.be_phela.repository.BranchRepository;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -25,51 +28,83 @@ import java.util.Optional;
 public class BranchService implements IBranchService {
 
     BranchRepository branchRepository;
+    BranchMapper branchMapper;
 
     @Override
-    public Branch createBranch(Branch branch) {
-        // Kiểm tra nếu branch đã tồn tại
-        if (branchRepository.existsByBranchCode(branch.getBranchCode())) {
-            throw new DuplicateResourceException("Chi nhánh đã tồn tại với mã: " + branch.getBranchCode());
+    public String generateBranchCode() {
+        long count = branchRepository.count(); // Đếm số lượng danh mục hiện có
+        return String.format("CH%04d", count + 1);
+    }
+
+    @Override
+    @Transactional
+    public Branch createBranch(BranchCreateDTO branchDTO) {
+        log.info("Creating new branch with name: {}", branchDTO.getBranchName());
+
+        // Kiểm tra xem tên chi nhánh đã tồn tại chưa
+        if (branchRepository.findByBranchName(branchDTO.getBranchName()).isPresent()) {
+            throw new DuplicateResourceException("Chi nhánh với tên " + branchDTO.getBranchName() + " đã tồn tại");
         }
-        return branchRepository.save(branch);
+
+        Branch branch = branchMapper.toBranch(branchDTO);
+        branch.setBranchCode(generateBranchCode());
+        if (branch.getStatus() == null) {
+            branch.setStatus(ProductStatus.SHOW);
+        }
+        Branch savedBranch = branchRepository.save(branch);
+        log.info("Branch created successfully with code: {}", savedBranch.getBranchCode());
+        return savedBranch;
+
+    }
+
+    @Override
+    public Branch getBranchByCode(String branchCode) {
+        Optional<Branch> branchOpt = branchRepository.findById(branchCode);
+        return branchOpt.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh với mã: " + branchCode));
+    }
+
+    @Override
+    @Transactional
+    public Branch updateBranch(String branchCode, BranchCreateDTO updatedBranchDTO) {
+        Branch existingBranch = getBranchByCode(branchCode);
+
+        // Kiểm tra trùng tên chi nhánh
+        Optional<Branch> branchWithSameName = branchRepository.findByBranchName(updatedBranchDTO.getBranchName());
+        if (branchWithSameName.isPresent() && !branchWithSameName.get().getBranchCode().equals(branchCode)) {
+            throw new DuplicateResourceException("Chi nhánh với tên " + updatedBranchDTO.getBranchName() + " đã tồn tại");
+        }
+
+        existingBranch.setBranchName(updatedBranchDTO.getBranchName());
+        existingBranch.setLatitude(updatedBranchDTO.getLatitude());
+        existingBranch.setLongitude(updatedBranchDTO.getLongitude());
+        existingBranch.setCity(updatedBranchDTO.getCity());
+        existingBranch.setDistrict(updatedBranchDTO.getDistrict());
+        existingBranch.setStatus(updatedBranchDTO.getStatus());
+        Branch savedBranch = branchRepository.save(existingBranch);
+        log.info("Branch updated successfully with code: {}", savedBranch.getBranchCode());
+        return savedBranch;
+    }
+
+    @Override
+    public List<Branch> findBranchesByCity(String city) {
+        log.info("Fetching branches by city: {}", city);
+        return branchRepository.findByCity(city);
+    }
+
+    @Override
+    @Transactional
+    public Branch toggleBranchStatus(String branchCode) {
+        log.info("Toggling status for branch with code: {}", branchCode);
+        Branch branch = getBranchByCode(branchCode);
+        branch.setStatus(branch.getStatus() == ProductStatus.SHOW ? ProductStatus.HIDE : ProductStatus.SHOW);
+        Branch updatedBranch = branchRepository.save(branch);
+        log.info("Branch status updated to {} for code: {}", updatedBranch.getStatus(), branchCode);
+        return updatedBranch;
     }
 
     @Override
     public Page<Branch> getAllBranches(Pageable pageable) {
         log.info("Fetching all branches with pageable: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-        return branchRepository.findAll(pageable);
-    }
-    @Override
-    public Branch getBranchById(String branchCode) {
-        Optional<Branch> branchOpt = branchRepository.findById(branchCode);
-        return branchOpt.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh với mã: " + branchCode));
-    }
-    @Override
-    @Transactional
-    public Branch updateBranch(String branchCode, Branch updatedBranch) {
-        log.info("Updating branch with code: {}", branchCode);
-        Branch existingBranch = getBranchById(branchCode);
-        existingBranch.setBranchName(updatedBranch.getBranchName());
-        existingBranch.setLatitude(updatedBranch.getLatitude());
-        existingBranch.setLongitude(updatedBranch.getLongitude());
-        existingBranch.setCity(updatedBranch.getCity());
-        existingBranch.setDistrict(updatedBranch.getDistrict());
-        Branch savedBranch = branchRepository.save(existingBranch);
-        log.info("Branch updated successfully with code: {}", savedBranch.getBranchCode());
-        return savedBranch;
-    }
-    @Override
-    @Transactional
-    public void deleteBranch(String branchCode) {
-        log.info("Deleting branch with code: {}", branchCode);
-        Branch branch = getBranchById(branchCode);
-        branchRepository.delete(branch);
-        log.info("Branch deleted successfully with code: {}", branchCode);
-    }
-    @Override
-    public List<Branch> findBranchesByCity(String city) {
-        log.info("Fetching branches by city: {}", city);
-        return branchRepository.findByCity(city);
+        return branchRepository.findAll(pageable); // Sử dụng phương thức mặc định từ JpaRepository
     }
 }

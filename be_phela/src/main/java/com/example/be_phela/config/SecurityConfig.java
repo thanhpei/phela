@@ -69,9 +69,9 @@ public class SecurityConfig {
                     // Cho phép truy cập không cần xác thực
 //                    registry.requestMatchers("/auth/admin/register", "/auth/customer/register",
 //                            "/auth/admin/login", "/auth/customer/login","/verify").permitAll();
-                    registry.requestMatchers("/auth/**","/verify","/api/admin/**").permitAll();
+                    registry.requestMatchers("/auth/**","/verify","/api/admin/**","/api/customer/**").permitAll();
 //                    registry.requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_STAFF");
-                    registry.requestMatchers("/api/customer/**").hasAnyAuthority("ROLE_CUSTOMER");
+//                    registry.requestMatchers("/api/customer/**").hasAnyAuthority("ROLE_CUSTOMER");
                     registry.anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)

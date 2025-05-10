@@ -18,11 +18,8 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity(name = "category")
 public class Category {
-    @Id
-    @UuidGenerator
-    @Column(name = "category_id", nullable = false, unique = true)
-    private String categoryId;
 
+    @Id
     @Column(name = "category_code", nullable = false, unique = true)
     private String categoryCode;
 

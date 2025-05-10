@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import "../../assets/css/Header.css";
 import logo from "../../assets/images/logo.png";
 import menuData from '../../data/menuUser.json';
 import { FaBars, FaTimes } from "react-icons/fa";
+import { useAuth } from '~/AuthContext';
+import { RiAccountCircleLine } from "react-icons/ri";
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
@@ -43,9 +52,34 @@ function Header() {
         </ul>
       </div>
 
-      <div className="navbar-links ml-7">
-        <Link to="/login-register" className="btn-login">Đăng nhập</Link>
-      </div>
+      <div className="navbar-links ml-7 relative">
+              {user ? (
+                <div className="user-menu group">
+                 <div className="flex items-center cursor-pointer">
+                    <RiAccountCircleLine className='text-white mr-1 text-2xl' />
+                    <span className="mr-2 uppercase">{user.username}</span>
+                  </div>
+                  <div className="dropdown-menu group-hover:visible group-hover:opacity-100">
+                    <Link
+                      to="/profile"
+                      className="dropdown-item uppercase no-underline"
+                    >
+                      Thông tin cá nhân
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="dropdown-item uppercase w-full text-left"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Link to="/login-register" className="btn-login">
+                  Đăng nhập
+                </Link>
+              )}
+            </div>
 
     </div>
   );

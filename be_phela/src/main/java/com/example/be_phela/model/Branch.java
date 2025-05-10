@@ -1,5 +1,6 @@
 package com.example.be_phela.model;
 
+import com.example.be_phela.model.enums.ProductStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -33,6 +34,9 @@ public class Branch {
 
     @Column(name = "district", nullable = false)
     private String district;
+
+    @Column(name = "status", nullable = false)
+    private ProductStatus status;
 
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY,cascade = CascadeType.ALL)
     List<Admin> admins;

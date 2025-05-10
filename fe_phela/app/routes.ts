@@ -1,4 +1,4 @@
-import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
+import { type RouteConfig, index, route, layout, prefix } from "@react-router/dev/routes";
 import { Children } from "react";
 
 const customerRoutes: RouteConfig = [
@@ -42,7 +42,7 @@ const customerRoutes: RouteConfig = [
 const adminRoutes: RouteConfig = [
       index("routes/loginRegisterAdmin.tsx"),
       route("dashboard", "routes/AdminDashboard.tsx"),
-    
+      route("san-pham", "routes/productManage.tsx"),
 ];
 
 // Try creating the routes without the children property

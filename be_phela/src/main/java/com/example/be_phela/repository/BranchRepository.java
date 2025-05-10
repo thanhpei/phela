@@ -9,8 +9,7 @@ import java.util.Optional;
 @Repository
 public interface BranchRepository extends JpaRepository<Branch, String> {
     Optional<Branch> findByBranchName(String branchName);
-    Branch getByBranchCode(String branchCode);
-//    Branch save(Branch branch);
+    Branch findByBranchCode(String branchCode);
     List<Branch> findAll();
     Boolean existsByBranchCode(String branchCode);
     List<Branch> findByCity(String city);

@@ -34,5 +34,5 @@ public class CartItem {
 
     @NotNull(message = "Price is required")
     @Column(name = "price", nullable = false)
-    private BigDecimal price;
+    private Double price;
 }

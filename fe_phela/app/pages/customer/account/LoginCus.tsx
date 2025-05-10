@@ -2,19 +2,18 @@ import { type RouteConfig, index, route, layout } from "@react-router/dev/routes
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaFacebookF, FaGoogle } from "react-icons/fa";
-import { loginCustomer } from "~/services/authServices";
+import { useAuth } from "~/AuthContext";
 
 const LoginAdmin = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleLogin = async () => {
         try {
-            const credentials = { username, password };
-            const response = await loginCustomer(credentials);
-            console.log('Customer login successful:', response);
+            await login({ username, password }, 'customer');
             setError(''); // Clear error if login succeeds
             navigate('/');
         } catch (err) {

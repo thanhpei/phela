@@ -3,62 +3,62 @@
         {
           "id":1,
           "title": "Sản phẩm",
-          "link": "/#",
+          "link": "/admin/#",
           "subMenu": [
             {
               "title": "Sản phẩm",
-              "link": "/san-pham"
+              "link": "/admin/san-pham"
             },
             {
               "title": "Danh mục",
-              "link": "/danh-muc"
+              "link": "/admin/danh-muc"
             }
           ]
         },
         {
           "id":2,
           "title": "Bán hàng",
-          "link": "/#",
+          "link": "/admin/#",
           "subMenu": [
             {
               "title": "Đơn hàng",
-              "link": "/don-hang"
+              "link": "/admin/don-hang"
             },
             {
               "title": "Đơn hủy",
-              "link": "/don-huy"
+              "link": "/admin/don-huy"
             }
           ]
         },
         {
           "id":3,
           "title": "Báo cáo",
-          "link": "/#",
+          "link": "/admin/#",
           "subMenu": [
-            { "title": "Doanh thu", "link": "/doanh-thu" },
-            { "title": "Đơn hàng", "link": "/bao-cao-don-hang" }
+            { "title": "Doanh thu", "link": "/admin/doanh-thu" },
+            { "title": "Đơn hàng", "link": "/admin/bao-cao-don-hang" }
           ]
         },
         {
           "id":4,
           "title": "Khuyến mãi",
-          "link": "/#",
+          "link": "/admin/#",
           "subMenu": [
               {
                   "title": "Chương trình khuyến mãi",
-                  "link": "/chuong-trinh-khuyen-mai"
+                  "link": "/admin/chuong-trinh-khuyen-mai"
               },
               {
                   "title": "Mã giảm giá",
-                  "link": "/ma-giam-gia"
+                  "link": "/admin/ma-giam-gia"
               },
               {
                   "title": "Quà tặng",
-                  "link": "/qua-tang"
+                  "link": "/admin/qua-tang"
               },
               {
                   "title": "Tích điểm",
-                  "link": "/tich-diem"
+                  "link": "/admin/tich-diem"
               }
           ]
         }

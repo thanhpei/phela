@@ -45,15 +45,15 @@ public class Promotion {
 
     @NotNull(message = "Discount value is required")
     @Column(name = "discount_value", nullable = false)
-    private BigDecimal discountValue;
+    private Double discountValue;
 
     // Giá trị đơn hàng tối thiểu
     @Column(name = "minimum_order_amount")
-    private BigDecimal minimumOrderAmount;
+    private Double minimumOrderAmount;
 
     //Giá trị giảm giá tối đa
     @Column(name = "max_discount_amount")
-    private BigDecimal maxDiscountAmount;
+    private Double maxDiscountAmount;
 
     @NotNull(message = "Start date is required")
     @Column(name = "start_date", nullable = false)

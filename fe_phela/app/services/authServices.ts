@@ -32,9 +32,6 @@ interface LoginCredentials {
 export const loginAdmin = async (credentials: LoginCredentials) => {
   try {
     const response = await api.post('auth/admin/login', credentials);
-    // const { token, username, role } = response.data.data;
-    // localStorage.setItem('token', token);
-    // localStorage.setItem('user', JSON.stringify({ username, role, type: 'admin' }));
     return response.data;
   } catch (error) {
     throw new Error('Admin login failed');
@@ -45,9 +42,6 @@ export const loginAdmin = async (credentials: LoginCredentials) => {
 export const loginCustomer = async (credentials: LoginCredentials) => {
   try {
     const response = await api.post('auth/customer/login', credentials);
-    // const { token, username, role } = response.data.data;
-    // localStorage.setItem('token', token); // Lưu token
-    // localStorage.setItem('user', JSON.stringify({ username, role, type: 'customer' }));
     return response.data;
   } catch (error) {
     throw new Error('Customer login failed');

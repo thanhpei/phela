@@ -1,19 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaFacebookF, FaGoogle } from "react-icons/fa";
-import { loginAdmin } from "~/services/authServices";
+import { useAuth } from "~/AuthContext";
 
 const Login = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleLogin = async () => {
         try {
-            const credentials = { username, password };
-            const response = await loginAdmin(credentials);
-            console.log('Admin login successful:', response);
+            await login({ username, password }, 'admin');
             setError('');
             navigate('/admin/dashboard');
         } catch (err) {
