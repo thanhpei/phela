@@ -61,7 +61,7 @@ function Header() {
                   </div>
                   <div className="dropdown-menu group-hover:visible group-hover:opacity-100">
                     <Link
-                      to="/profile"
+                      to="/profileCustomer"
                       className="dropdown-item uppercase no-underline"
                     >
                       Thông tin cá nhân

@@ -1,8 +1,11 @@
 package com.example.be_phela.controller;
 
+import com.example.be_phela.dto.request.AdminCreateDTO;
 import com.example.be_phela.dto.response.AdminResponseDTO;
 import com.example.be_phela.mapper.AdminMapper;
 import com.example.be_phela.model.Admin;
+import com.example.be_phela.model.enums.Roles;
+import com.example.be_phela.model.enums.Status;
 import com.example.be_phela.service.AdminService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("api/admin")
@@ -35,9 +41,53 @@ public class AdminController {
 
     @GetMapping("/{username}")
     public ResponseEntity<AdminResponseDTO> getAdminByUsername(@PathVariable String username) {
-        Admin admin = adminService.findAdminByUsername(username);
-        AdminResponseDTO responseDTO = adminMapper.toAdminResponseDTO(admin);
+        AdminResponseDTO responseDTO = adminService.findAdminByUsername(username);
         return ResponseEntity.ok(responseDTO);
+    }
+
+    @PutMapping("/{username}")
+    public ResponseEntity<AdminResponseDTO> updateAdmin(
+            @PathVariable String username,
+            @RequestBody AdminCreateDTO adminDTO,
+            Principal principal) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdmin(username, adminDTO, principal.getName());
+        return ResponseEntity.ok(updatedAdmin);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<AdminResponseDTO>> searchAdmins(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String fullname,
+            @RequestParam(required = false) Roles role) {
+        List<AdminResponseDTO> admins = adminService.searchAdmins(username, fullname, role);
+        return ResponseEntity.ok(admins);
+    }
+
+    @PatchMapping("/{username}/role")
+    public ResponseEntity<AdminResponseDTO> updateAdminRole(
+            @PathVariable String username,
+            @RequestParam Roles newRole,
+            Principal principal) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdminRole(username, newRole, principal.getName());
+        return ResponseEntity.ok(updatedAdmin);
+    }
+
+    @PatchMapping("/{username}/status")
+    public ResponseEntity<AdminResponseDTO> updateAdminStatus(
+            @PathVariable String username,
+            @RequestParam Status newStatus,
+            Principal principal) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdminStatus(username, newStatus, principal.getName());
+        return ResponseEntity.ok(updatedAdmin);
+    }
+
+    @PatchMapping("/{username}/assign-branch")
+    public ResponseEntity<AdminResponseDTO> assignBranchToAdmin(
+            @PathVariable String username,
+            @RequestParam String branchCode,
+            Principal principal) {
+        AdminResponseDTO updatedAdmin = adminService.assignBranchToAdmin(username, branchCode, principal.getName());
+        return ResponseEntity.ok(updatedAdmin);
     }
 
 }

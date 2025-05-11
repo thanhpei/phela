@@ -1,23 +1,41 @@
 // src/context/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect} from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { loginAdmin, loginCustomer, logout } from '~/services/authServices';
-import { getAdminProfile, getCustomerProfile } from '~/services/userServices';
+import { getAdminProfile, getCustomerProfile, updateCustomerProfile, updateAdminProfile } from '~/services/userServices';
 
-// Định nghĩa kiểu dữ liệu cho User
-interface User {
+interface UserBase {
   username: string;
   role: string;
   type: 'admin' | 'customer';
-  token?: string; // Thêm token nếu cần
+  token?: string;
 }
 
-// Định nghĩa kiểu dữ liệu cho AuthContext
+interface AdminUser extends UserBase {
+  type: 'admin';
+  fullname: string;
+  email: string;
+  phone: string;
+  gender: string;
+  dob: string;
+}
+
+interface CustomerUser extends UserBase {
+  type: 'customer';
+  email: string;
+  gender: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+type User = AdminUser | CustomerUser;
+
 interface AuthContextType {
   user: User | null;
   login: (credentials: { username: string; password: string }, type: 'admin' | 'customer') => Promise<void>;
   logout: () => void;
   loading: boolean;
+  updateUserProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,30 +44,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Kiểm tra trạng thái đăng nhập khi ứng dụng khởi động
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    if (storedUser && storedToken) {
-      const parsedUser: User = JSON.parse(storedUser);
-      setUser(parsedUser);
-      // Có thể thêm logic gọi API để xác thực token nếu cần
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      
+      if (storedUser && storedToken) {
+        const parsedUser: User = JSON.parse(storedUser);
+        
+        try {
+          // Lấy thông tin người dùng từ API
+          const freshData = parsedUser.type === 'admin' 
+            ? await getAdminProfile(parsedUser.username)
+            : await getCustomerProfile(parsedUser.username);
+          
+          setUser({
+            ...parsedUser,
+            ...freshData
+          });
+        } catch (error) {
+          console.error('Failed to refresh user data:', error);
+          setUser(parsedUser);
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  // Hàm đăng nhập
   const login = async (credentials: { username: string; password: string }, type: 'admin' | 'customer') => {
     try {
       setLoading(true);
-      let response;
-      if (type === 'admin') {
-        response = await loginAdmin(credentials);
-      } else {
-        response = await loginCustomer(credentials);
-      }
+      const response = type === 'admin' 
+        ? await loginAdmin(credentials)
+        : await loginCustomer(credentials);
+      
       const { token, username, role } = response.data;
-      const userData: User = { username, role, type, token };
+      
+      // Lấy thông tin người dùng từ API
+      const profile = type === 'admin'
+        ? await getAdminProfile(username)
+        : await getCustomerProfile(username);
+      
+      const userData: User = {
+        ...profile,
+        username,
+        role,
+        type,
+        token
+      };
+      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -60,16 +105,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Hàm đăng xuất
+  const updateUserProfile = async (data: Partial<User>) => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      let updatedProfile;
+      
+      if (user.type === 'admin') {
+        updatedProfile = await updateAdminProfile(user.username, data);
+      } else {
+        updatedProfile = await updateCustomerProfile(user.username, data);
+      }
+      
+      const updatedUser = {
+        ...user,
+        ...updatedProfile
+      };
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      throw new Error('Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+
+    // Chuyển hướng dựa trên loại người dùng
+    const redirectPath = user?.type === 'admin' ? '/admin' : '/';
+    window.location.href = redirectPath;
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout: handleLogout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout: handleLogout, 
+      loading,
+      updateUserProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

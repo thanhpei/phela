@@ -22,4 +22,5 @@ public class AdminResponseDTO {
     String phone;
     Roles role;
     Status status;
+    String branch;
 }

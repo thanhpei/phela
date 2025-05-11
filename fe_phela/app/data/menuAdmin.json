@@ -61,7 +61,20 @@
                   "link": "/admin/tich-diem"
               }
           ]
+        },
+        {
+          "id":5,
+          "title": "Nhân viên",
+          "link": "/admin/staff",
+          "subMenu": []
+        },
+         {
+          "id":6,
+          "title": "Cửa hàng",
+          "link": "/admin/store",
+          "subMenu": []
         }
+
       ]
   }
   

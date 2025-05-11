@@ -39,14 +39,12 @@ public class BranchController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BranchRepositoryDTO>> getAllBranches(
+    public ResponseEntity<Page<BranchRepositoryDTO>> getAllBranches(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Branch> branchPage = branchService.getAllBranches(pageable);
-        List<BranchRepositoryDTO> branchDTOs = branchPage.getContent().stream()
-                .map(branchMapper::toBranchRepositoryDTO)
-                .collect(Collectors.toList());
+        Page<BranchRepositoryDTO> branchDTOs = branchPage.map(branchMapper::toBranchRepositoryDTO);
         return ResponseEntity.ok(branchDTOs);
     }
 

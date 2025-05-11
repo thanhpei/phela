@@ -1,6 +1,8 @@
 package com.example.be_phela.interService;
 
+import com.example.be_phela.dto.request.AdminCreateDTO;
 import com.example.be_phela.dto.request.CustomerCreateDTO;
+import com.example.be_phela.dto.response.AdminResponseDTO;
 import com.example.be_phela.dto.response.CustomerResponseDTO;
 import com.example.be_phela.model.Customer;
 import org.springframework.data.domain.Page;
@@ -15,4 +17,5 @@ public interface ICustomerService {
     Customer buildCustomer(CustomerCreateDTO customerCreateDTO);
     Page<CustomerResponseDTO> getAllCustomers(Pageable pageable);
     Customer findAdminByUsername(String username);
+    CustomerResponseDTO updateCustomer(String username, CustomerCreateDTO customerCreateDTO);
 }

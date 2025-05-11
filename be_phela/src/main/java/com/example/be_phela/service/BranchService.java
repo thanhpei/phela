@@ -59,7 +59,7 @@ public class BranchService implements IBranchService {
 
     @Override
     public Branch getBranchByCode(String branchCode) {
-        Optional<Branch> branchOpt = branchRepository.findById(branchCode);
+        Optional<Branch> branchOpt = branchRepository.findByBranchCode(branchCode);
         return branchOpt.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh với mã: " + branchCode));
     }
 
@@ -79,7 +79,8 @@ public class BranchService implements IBranchService {
         existingBranch.setLongitude(updatedBranchDTO.getLongitude());
         existingBranch.setCity(updatedBranchDTO.getCity());
         existingBranch.setDistrict(updatedBranchDTO.getDistrict());
-        existingBranch.setStatus(updatedBranchDTO.getStatus());
+        existingBranch.setAddress(updatedBranchDTO.getAddress());
+        existingBranch.setStatus(updatedBranchDTO.getStatus() != null ? updatedBranchDTO.getStatus() : ProductStatus.SHOW);
         Branch savedBranch = branchRepository.save(existingBranch);
         log.info("Branch updated successfully with code: {}", savedBranch.getBranchCode());
         return savedBranch;
@@ -88,7 +89,7 @@ public class BranchService implements IBranchService {
     @Override
     public List<Branch> findBranchesByCity(String city) {
         log.info("Fetching branches by city: {}", city);
-        return branchRepository.findByCity(city);
+        return branchRepository.findByCityContainsIgnoreCase(city);
     }
 
     @Override
@@ -104,7 +105,6 @@ public class BranchService implements IBranchService {
 
     @Override
     public Page<Branch> getAllBranches(Pageable pageable) {
-        log.info("Fetching all branches with pageable: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-        return branchRepository.findAll(pageable); // Sử dụng phương thức mặc định từ JpaRepository
+        return branchRepository.findAll(pageable);
     }
 }

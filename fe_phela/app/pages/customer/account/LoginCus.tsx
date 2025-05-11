@@ -1,26 +1,52 @@
-import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaFacebookF, FaGoogle } from "react-icons/fa";
 import { useAuth } from "~/AuthContext";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const LoginAdmin = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, updateUserProfile } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleLogin = async () => {
-        try {
-            await login({ username, password }, 'customer');
-            setError(''); // Clear error if login succeeds
-            navigate('/');
-        } catch (err) {
-            setError('Quên tài khoản hoặc mật khẩu không đúng.');
-            alert('Đăng nhập không thành công!');
-        }
-    };
+    try {
+      setError(''); // Clear error
+      await login({ username, password }, 'customer');
+
+      // Lấy vị trí của khách hàng
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            // Cập nhật vị trí lên backend
+            await updateUserProfile({
+              latitude,
+              longitude,
+            });
+
+            console.log('Location updated:', { latitude, longitude });
+          },
+          (error) => {
+            console.error('Error getting location:', error);
+            toast.error('Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập.');
+          }
+        );
+      } else {
+        console.warn('Geolocation is not supported by this browser.');
+      }
+
+      navigate('/');
+    } catch (err) {
+      setError('Tài khoản hoặc mật khẩu không đúng.');
+      alert('Đăng nhập không thành công!');
+    }
+  };
 
     return (
         <div className="flex flex-col justify-center items-center p-10 bg-white h-screen">

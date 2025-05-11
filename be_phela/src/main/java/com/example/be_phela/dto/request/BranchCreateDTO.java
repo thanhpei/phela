@@ -16,5 +16,6 @@ public class BranchCreateDTO {
     private Double longitude;
     private String city;
     private String district;
+    private String address;
     private ProductStatus status;
 }

@@ -10,7 +10,7 @@ import java.util.List;
 public interface IBranchService {
     String generateBranchCode();
     Branch createBranch(BranchCreateDTO branchDTO);
-    Page<Branch> getAllBranches(Pageable pageable);
+    public Page<Branch> getAllBranches(Pageable pageable);
     Branch getBranchByCode(String branchCode);
     Branch updateBranch(String branchCode, BranchCreateDTO updatedBranchDTO);
     List<Branch> findBranchesByCity(String city);

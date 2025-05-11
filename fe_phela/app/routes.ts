@@ -37,12 +37,25 @@ const customerRoutes: RouteConfig = [
 
     //Tài khoản
     route("login-register", "routes/loginRegisterCus.tsx"),
+    route("profileCustomer", "routes/ProfileCustomer.tsx"),
 ];
 
 const adminRoutes: RouteConfig = [
       index("routes/loginRegisterAdmin.tsx"),
       route("dashboard", "routes/AdminDashboard.tsx"),
       route("san-pham", "routes/productManage.tsx"),
+      route("danh-muc", "routes/category.tsx"),
+      route("don-hang", "routes/orderManage.tsx"),
+      route("don-huy", "routes/orderCancel.tsx"),
+      route("bao-cao-don-hang", "routes/OrderReport.tsx"),
+      route("doanh-thu", "routes/Revenue.tsx"),
+      route("chuong-trinh-khuyen-mai", "routes/promotions.tsx"),
+      route("qua-tang", "routes/present.tsx"),
+      route("ma-giam-gia", "routes/discountCode.tsx"),
+      route("tich-diem", "routes/accumulatePoints.tsx"),
+      route("profileAdmin", "routes/profileAdmin.tsx"),
+      route("staff", "routes/staff.tsx"),
+      route("store", "routes/storeManage.tsx"),
 ];
 
 // Try creating the routes without the children property

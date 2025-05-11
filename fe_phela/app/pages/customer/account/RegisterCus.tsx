@@ -18,8 +18,8 @@ const Register = () => {
         try {
           await registerCustomer(formData);
           console.log('Khách hàng đăng ký thành công');
-          alert('Đăng ký thành công!');
-          navigate('/');
+          alert('Đăng ký thành công! Vui lòng xác nhận tài khoản qua email.');
+          navigate('/login-register');
         } catch (err) {
           setError('Không thể đăng ký, vui lòng thử lại sau!');
           console.error('Lỗi đăng ký:', err);
@@ -53,9 +53,9 @@ const Register = () => {
             value={formData.gender}
             onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
                 <option value="">Chọn giới tính</option>
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-                <option value="other">Khác</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
             </select>
             <button onClick={handleRegister} className="w-64 p-2 bg-black text-white rounded transition delay-150 duration-300 ease-in-out hover:-translate-y-1 hover:scale-110 drop-shadow-lg">
                 Register

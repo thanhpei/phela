@@ -70,4 +70,24 @@ public class CustomerService implements ICustomerService {
         return customerRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin not found with username: " + username));
     }
+
+    @Override
+    public CustomerResponseDTO updateCustomer(String username, CustomerCreateDTO customerCreateDTO) {
+        Optional<Customer> customer = customerRepository.findByUsername(username);
+        Customer customerUpdate = customer.get();
+        // Kiểm tra email trùng lặp
+        if (!customerUpdate.getEmail().equals(customerCreateDTO.getEmail()) && customerRepository.existsByEmail(customerCreateDTO.getEmail())) {
+            throw new DuplicateResourceException("Email already exists");
+        }
+
+        customerUpdate.setEmail(customerCreateDTO.getEmail());
+        customerUpdate.setGender(customerCreateDTO.getGender());
+        customerUpdate.setLatitude(customerCreateDTO.getLatitude());
+        customerUpdate.setLongitude(customerCreateDTO.getLongitude());
+        if (customerCreateDTO.getPassword() != null && !customerCreateDTO.getPassword().isEmpty()) {
+            customerUpdate.setPassword(passwordEncoder.encode(customerCreateDTO.getPassword()));
+        }
+        Customer updatedCustomer = customerRepository.save(customerUpdate);
+        return customerMapper.toCustomerResponseDTO(updatedCustomer);
+    }
 }

@@ -18,7 +18,7 @@ function Header() {
   
   const handleLogout = () => {
     logout();
-    navigate('/admin'); // Điều hướng về trang đăng nhập sau khi đăng xuất
+    navigate('/admin'); 
   };
 
   return (
@@ -61,7 +61,7 @@ function Header() {
             </div>
             <div className="dropdown-menu group-hover:visible group-hover:opacity-100">
               <Link
-                to="/admin/profile"
+                to="/admin/profileAdmin"
                 className="dropdown-item uppercase no-underline"
               >
                 Thông tin cá nhân
