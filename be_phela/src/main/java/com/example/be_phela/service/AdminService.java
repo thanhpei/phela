@@ -64,8 +64,8 @@ public class AdminService implements IAdminService {
     }
 
     @Transactional
-    public Admin saveAdmin(Admin admin) {
-        return adminRepository.save(admin);
+    public void saveAdmin(Admin admin) {
+        adminRepository.save(admin);
     }
 
     @Override

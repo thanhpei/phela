@@ -2,10 +2,10 @@ package com.example.be_phela.model;
 
 import com.example.be_phela.model.enums.ProductStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
+        import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
+        import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
@@ -29,7 +29,7 @@ public class Product {
     @Column(name = "product_code", nullable = false, unique = true)
     private String productCode;
 
-//    @NotBlank(message = "Product name is required")
+    //    @NotBlank(message = "Product name is required")
     @Column(name = "product_name", nullable = false)
     private String productName;
 

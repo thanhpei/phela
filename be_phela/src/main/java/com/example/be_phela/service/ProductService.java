@@ -8,7 +8,6 @@ import com.example.be_phela.model.Product;
 import com.example.be_phela.model.enums.ProductStatus;
 import com.example.be_phela.repository.CategoryRepository;
 import com.example.be_phela.repository.ProductRepository;
-import jakarta.persistence.Id;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,12 +25,17 @@ public class ProductService implements IProductService {
     ProductMapper productMapper;
 
     // Tạo mã sản phẩm
-    public String generateProductCode() {
+    private String generateProductCode() {
         long count = productRepository.count();
         return String.format("SP%04d", count + 1);
     }
 
+    private boolean isProductCodeExists(String productCode) {
+        return productRepository.existsByProductCode(productCode);
+    }
+
     // Thêm sản phẩm mới
+    @Override
     @Transactional
     public Product createProduct(ProductCreateDTO productDTO, String categoryCode) {
         Category category = categoryRepository.findByCategoryCode(categoryCode)
@@ -45,6 +49,7 @@ public class ProductService implements IProductService {
     }
 
     // Cập nhật sản phẩm
+    @Override
     @Transactional
     public Product updateProduct(String productId, ProductCreateDTO productDTO, String categoryCode) {
         Product existingProduct = productRepository.findById(productId)
@@ -63,6 +68,7 @@ public class ProductService implements IProductService {
     }
 
     // Chuyển trạng thái ẩn/hiện
+    @Override
     @Transactional
     public Product toggleProductStatus(String productId) {
         Product product = productRepository.findById(productId)
@@ -73,9 +79,62 @@ public class ProductService implements IProductService {
     }
 
     // Lọc sản phẩm theo danh mục
+    @Override
     public Page<Product> getProductsByCategory(String categoryCode, Pageable pageable) {
         Category category = categoryRepository.findById(categoryCode)
                 .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
         return productRepository.findByCategory(category, pageable);
     }
+
+    //Xoa san pham
+    @Override
+    @Transactional
+    public void deleteProduct(String productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+
+        if (!product.getOrderItems().isEmpty() || !product.getCartItems().isEmpty()) {
+            throw new RuntimeException("Cannot delete product with existing orders or cart items");
+        }
+        productRepository.delete(product);
+
+    }
+
+    @Override
+    // Lấy tất cả sản phẩm
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
+    }
+
+    @Override
+    // Lấy sản phẩm theo code
+    public Product getProductByCode(String productCode) {
+        return productRepository.findByProductCode(productCode)
+                .orElseThrow(() -> new RuntimeException("Product not found with code: " + productCode));
+    }
+
+    @Override
+    // Tìm kiếm sản phẩm theo prefix của tên hoặc mô tả
+    public Page<Product> searchProductsByPrefix(String prefix, Pageable pageable) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            return productRepository.findAll(pageable);
+        }
+        return productRepository.findByProductNameStartingWithIgnoreCaseOrDescriptionStartingWithIgnoreCase(
+                prefix.trim(), prefix.trim(), pageable);
+    }
+
+    @Override
+    // Lấy sản phẩm theo trạng thái
+    public Page<Product> getProductsByStatus(ProductStatus status, Pageable pageable) {
+        return productRepository.findByStatus(status, pageable);
+    }
+
+
+    @Override
+    // Lấy sản phẩm theo id
+    public Product getProductById(String productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+    }
+
 }

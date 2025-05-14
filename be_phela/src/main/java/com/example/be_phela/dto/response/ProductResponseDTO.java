@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ProductReponseDTO {
+public class ProductResponseDTO {
 
     private String productName;
     private String description;
