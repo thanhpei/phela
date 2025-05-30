@@ -34,7 +34,7 @@ public class Order {
 
     @NotNull(message = "Total amount is required")
     @Column(name = "total_amount", nullable = false)
-    private BigDecimal totalAmount;
+    private Double totalAmount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
@@ -70,7 +70,7 @@ public class Order {
     // Phí ship
     @Builder.Default
     @Column(name = "shipping_fee", nullable = false)
-    private BigDecimal shippingFee = BigDecimal.ZERO;
+    private Double shippingFee = Double.NaN;
 
     @NotNull(message = "Payment method is required")
     @Enumerated(EnumType.STRING)
@@ -84,5 +84,10 @@ public class Order {
 
     @OneToMany(mappedBy = "orders", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PromotionOrder> promotionOrders;
+
+
 }
 

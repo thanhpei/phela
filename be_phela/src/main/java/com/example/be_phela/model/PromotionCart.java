@@ -3,27 +3,33 @@ package com.example.be_phela.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.validator.constraints.UUID;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Entity(name = "product_promotion")
-public class ProductPromotion {
+@Entity(name = "promotion_cart")
+public class PromotionCart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_promotion_id", nullable = false, unique = true)
-    private Long productPromotionId;
+    @Column(name = "promotion_cart_id")
+    private Long promotionCartId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id", nullable = false)
     private Promotion promotion;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "cart_id", nullable = false)
+    private Cart cart;
 
-//    @Column(name = "priority")
-//    private Integer priority;
+    @CreationTimestamp
+    @Column(name = "applied_at", nullable = false)
+    private LocalDateTime appliedAt;
+
 }

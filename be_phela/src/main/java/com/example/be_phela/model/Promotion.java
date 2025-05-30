@@ -77,6 +77,9 @@ public class Promotion {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ProductPromotion> productPromotions;
+    private List<PromotionCart> promotionCarts;
+
+    @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PromotionOrder> promotionOrders;
 
 }

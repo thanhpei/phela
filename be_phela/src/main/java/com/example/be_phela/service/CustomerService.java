@@ -31,6 +31,7 @@ public class CustomerService implements ICustomerService {
     private final CustomerRepository customerRepository;
     CustomerMapper customerMapper;;
     BCryptPasswordEncoder passwordEncoder;
+    CartService cartService;
 
     public String generateCustomerCode() {
         long count = customerRepository.count(); // Đếm số lượng Customer hiện có
@@ -56,6 +57,7 @@ public class CustomerService implements ICustomerService {
 
     @Transactional
     public Customer saveCustomer(Customer customer) {
+        cartService.createCartForCustomer(customer.getCustomerId());
         return customerRepository.save(customer);
     }
 

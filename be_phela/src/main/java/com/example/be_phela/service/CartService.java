@@ -1,29 +1,29 @@
 package com.example.be_phela.service;
 
+import com.example.be_phela.dto.request.CartCreateDTO;
+import com.example.be_phela.dto.request.CartItemDTO;
 import com.example.be_phela.dto.request.CartItemRequestDTO;
 import com.example.be_phela.dto.response.CartResponseDTO;
 import com.example.be_phela.exception.ResourceNotFoundException;
 import com.example.be_phela.interService.ICartService;
 import com.example.be_phela.mapper.CartItemMapper;
 import com.example.be_phela.mapper.CartMapper;
-import com.example.be_phela.model.Cart;
-import com.example.be_phela.model.CartItem;
-import com.example.be_phela.model.Customer;
-import com.example.be_phela.model.Product;
+import com.example.be_phela.model.*;
 import com.example.be_phela.model.enums.CartStatus;
 import com.example.be_phela.model.enums.ProductStatus;
+import com.example.be_phela.model.enums.PromotionStatus;
 import com.example.be_phela.model.enums.Status;
-import com.example.be_phela.repository.CartItemRepository;
-import com.example.be_phela.repository.CartRepository;
-import com.example.be_phela.repository.CustomerRepository;
-import com.example.be_phela.repository.ProductRepository;
+import com.example.be_phela.repository.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,192 +31,155 @@ import java.util.Collections;
 public class CartService implements ICartService {
 
     CartRepository cartRepository;
-    CartItemRepository cartItemRepository;
+   PromotionRepository promotionRepository;
     CustomerRepository customerRepository;
     ProductRepository productRepository;
     CartMapper cartMapper;
-    CartItemMapper cartItemMapper;
 
-    @Override
+    // Tạo giỏ hàng khi tạo khách hàng
     @Transactional
-    public CartResponseDTO addProductToCart(String customerId, String productId, CartItemRequestDTO cartItemRequestDTO) {
+    public Cart createCartForCustomer(String customerId) {
+        if (cartRepository.existsByCustomer_CustomerId(customerId)) {
+            throw new RuntimeException("Cart already exists for customer: " + customerId);
+        }
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with ID: " + customerId));
-
-        if (customer.getStatus() != Status.ACTIVE) {
-            throw new ResourceNotFoundException("Customer is not active");
-        }
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
-
-        if (product.getStatus() != ProductStatus.SHOW) {
-            throw new ResourceNotFoundException("Product is not available");
-        }
-
-
-        Cart cart = cartRepository.findByCustomer(customer)
-                .orElseGet(() -> {
-                    Cart newCart = Cart.builder()
-                            .customer(customer)
-                            .status(CartStatus.ACTIVE)
-                            .build();
-                    return cartRepository.save(newCart);
-                });
-
-        CartItem cartItem = cartItemRepository.findByCartAndProduct(cart, product)
-                .orElseGet(() -> CartItem.builder()
-                        .cart(cart)
-                        .product(product)
-                        .quantity(0)
-                        .price(product.getOriginalPrice().doubleValue())
-                        .build());
-
-        cartItem.setQuantity(cartItem.getQuantity() + cartItemRequestDTO.getQuantity());
-        if (cartItem.getQuantity() <= 0) {
-            throw new ResourceNotFoundException("Quantity must be greater than 0");
-        }
-
-        cartItemRepository.save(cartItem);
-
-        if (cart.getStatus() != CartStatus.ACTIVE) {
-            cart.setStatus(CartStatus.ACTIVE);
-            cartRepository.save(cart);
-        }
-
-        return cartMapper.toCartResponseDTO(cart);
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+        Cart cart = Cart.builder()
+                .customer(customer)
+                .status(com.example.be_phela.model.enums.CartStatus.ACTIVE)
+                .build();
+        return cartRepository.save(cart);
     }
 
+
+    // Thêm hoặc cập nhật giỏ hàng
     @Override
     @Transactional
-    public CartResponseDTO updateCartItemQuantity(String customerId, String cartItemId, Integer quantity) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with ID: " + customerId));
-
-        if (customer.getStatus() != Status.ACTIVE) {
-            throw new ResourceNotFoundException("Customer is not active");
+    public CartResponseDTO createOrUpdateCart(CartCreateDTO cartDTO) {
+        Customer customer = customerRepository.findById(cartDTO.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + cartDTO.getCustomerId()));
+        Cart cart = cartRepository.findByCustomer_CustomerId(cartDTO.getCustomerId())
+                .orElseGet(() -> cartMapper.toCart(cartDTO, customer));
+        cart.setCustomer(customer);
+        if (cartDTO.getCartItems() != null && !cartDTO.getCartItems().isEmpty()) {
+            cart.getCartItems().clear();
+            for (CartItemDTO itemDTO : cartDTO.getCartItems()) {
+                Product product = productRepository.findById(itemDTO.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Product not found with id: " + itemDTO.getProductId()));
+                CartItem cartItem = cartMapper.toCartItem(itemDTO);
+                cartItem.setCart(cart);
+                cartItem.setProduct(product);
+                cartItem.setPrice(product.getOriginalPrice());
+                cart.getCartItems().add(cartItem);
+            }
         }
-
-        Cart cart = cartRepository.findByCustomer(customer)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart not found for customer ID: " + customerId));
-
-        CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with ID: " + cartItemId));
-
-        if (!cartItem.getCart().getCartId().equals(cart.getCartId())) {
-            throw new ResourceNotFoundException("Cart item does not belong to the customer's cart");
-        }
-
-        if (quantity <= 0) {
-            throw new ResourceNotFoundException("Quantity must be greater than 0");
-        }
-
-        cartItem.setQuantity(quantity);
-        cartItemRepository.save(cartItem);
-
-        if (cart.getStatus() != CartStatus.ACTIVE) {
-            cart.setStatus(CartStatus.ACTIVE);
-            cartRepository.save(cart);
-        }
-
-        return cartMapper.toCartResponseDTO(cart);
+        Cart savedCart = cartRepository.save(cart);
+        return cartMapper.toCartResponseDTO(savedCart);
     }
 
+
+    // Lấy giỏ hàng
+    @Override
+    public Cart getCartByCustomerId(String customerId) {
+        return cartRepository.findByCustomer_CustomerId(customerId)
+                .orElseThrow(() -> new RuntimeException("Cart not found for customer: " + customerId));
+    }
+
+    // Xóa tất cả vật phẩm trong giỏ hàng
     @Override
     @Transactional
-    public CartResponseDTO removeProductFromCart(String customerId, String cartItemId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with ID: " + customerId));
+    public void clearCartItems(String cartId) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
+        cart.getCartItems().clear();
+        cartRepository.save(cart);
+    }
 
-        if (customer.getStatus() != Status.ACTIVE) {
-            throw new ResourceNotFoundException("Customer is not active");
-        }
-
-        Cart cart = cartRepository.findByCustomer(customer)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart not found for customer ID: " + customerId));
-
-        CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with ID: " + cartItemId));
-
-        if (!cartItem.getCart().getCartId().equals(cart.getCartId())) {
-            throw new ResourceNotFoundException("Cart item does not belong to the customer's cart");
-        }
-
-        cartItemRepository.delete(cartItem);
-
-        if (cart.getCartItems().isEmpty()) {
-            cart.setStatus(CartStatus.CHECKED_OUT);
+    // Thêm hoặc cập nhật sản phẩm trong giỏ hàng
+    @Override
+    @Transactional
+    public CartItem addOrUpdateCartItem(String cartId, CartItemDTO cartItemDTO) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
+        Product product = productRepository.findById(cartItemDTO.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + cartItemDTO.getProductId()));
+        Optional<CartItem> existingItem = cart.getCartItems().stream()
+                .filter(item -> item.getProduct().getProductId().equals(cartItemDTO.getProductId()))
+                .findFirst();
+        CartItem cartItem;
+        if (existingItem.isPresent()) {
+            cartItem = existingItem.get();
+            cartItem.setQuantity(cartItemDTO.getQuantity());
+            cartItem.setPrice(product.getOriginalPrice());
         } else {
-            cart.setStatus(CartStatus.ACTIVE);
+            cartItem = cartMapper.toCartItem(cartItemDTO);
+            cartItem.setCart(cart);
+            cartItem.setProduct(product);
+            cartItem.setPrice(product.getOriginalPrice());
+            cart.getCartItems().add(cartItem);
         }
         cartRepository.save(cart);
-
-        return cartMapper.toCartResponseDTO(cart);
+        return cartItem;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public CartResponseDTO getCart(String customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with ID: " + customerId));
-
-        if (customer.getStatus() != Status.ACTIVE) {
-            throw new ResourceNotFoundException("Customer is not active");
-        }
-
-        Cart cart = cartRepository.findByCustomer(customer)
-                .orElseGet(() -> Cart.builder()
-                        .customer(customer)
-                        .status(CartStatus.CHECKED_OUT)
-                        .cartItems(Collections.emptyList())
-                        .build());
-
-        return cartMapper.toCartResponseDTO(cart);
-    }
-
-    // Xoá tất cả vật phẩm trong cart
+    // Xóa sản phẩm trong giỏ hàng
     @Override
     @Transactional
-    public CartResponseDTO clearCart(String customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with ID: " + customerId));
-
-        if (customer.getStatus() != Status.ACTIVE) {
-            throw new ResourceNotFoundException("Customer is not active");
-        }
-
-        Cart cart = cartRepository.findByCustomer(customer)
-                .orElseGet(() -> Cart.builder()
-                        .customer(customer)
-                        .status(CartStatus.CHECKED_OUT)
-                        .build());
-
-        cartItemRepository.deleteAll(cart.getCartItems());
-        cart.setStatus(CartStatus.CHECKED_OUT);
+    public void removeCartItem(String cartId, String productId) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
+        cart.getCartItems().removeIf(item -> item.getProduct().getProductId().equals(productId));
         cartRepository.save(cart);
-
-        return cartMapper.toCartResponseDTO(cart);
     }
 
+    // Tính tổng tiền giỏ hàng
     @Override
-    @Transactional(readOnly = true)
-    public Double getCartTotalPrice(String customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with ID: " + customerId));
-
-        if (customer.getStatus() != Status.ACTIVE) {
-            throw new ResourceNotFoundException("Customer is not active");
-        }
-
-        Cart cart = cartRepository.findByCustomer(customer)
-                .orElseGet(() -> Cart.builder()
-                        .customer(customer)
-                        .status(CartStatus.CHECKED_OUT)
-                        .cartItems(Collections.emptyList())
-                        .build());
-
+    public Double calculateCartTotal(String cartId) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
         return cart.getCartItems().stream()
                 .mapToDouble(item -> item.getPrice() * item.getQuantity())
                 .sum();
+    }
+
+    // Áp dụng khuyến mãi cho giỏ hàng
+    @Override
+    @Transactional
+    public void applyPromotionToCart(String cartId, String promotionCode) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
+        Promotion promotion = promotionRepository.findByPromotionCode(promotionCode)
+                .orElseThrow(() -> new RuntimeException("Promotion not found with code: " + promotionCode));
+
+        if (promotion.getStatus() != PromotionStatus.ACTIVE ||
+                LocalDateTime.now().isBefore(promotion.getStartDate()) ||
+                LocalDateTime.now().isAfter(promotion.getEndDate())) {
+            throw new RuntimeException("Promotion is not valid or expired");
+        }
+
+        Optional<PromotionCart> existingPromotion = cart.getPromotionCarts().stream()
+                .filter(pc -> pc.getPromotion().getPromotionId().equals(promotion.getPromotionId()))
+                .findFirst();
+        if (existingPromotion.isEmpty()) {
+            PromotionCart promotionCart = PromotionCart.builder()
+                    .promotion(promotion)
+                    .cart(cart)
+                    .build();
+            cart.getPromotionCarts().add(promotionCart);
+            cartRepository.save(cart);
+        }
+    }
+
+    // Lấy danh sách khuyến mãi có thể áp dụng
+    @Transactional(readOnly = true)
+    public List<Promotion> getApplicablePromotions(String cartId) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
+        Double cartTotal = calculateCartTotal(cartId);
+        return promotionRepository.findByStatusAndStartDateBeforeAndEndDateAfter(
+                        PromotionStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now())
+                .stream()
+                .filter(p -> cartTotal >= (p.getMinimumOrderAmount() != null ? p.getMinimumOrderAmount() : 0))
+                .toList();
     }
 }

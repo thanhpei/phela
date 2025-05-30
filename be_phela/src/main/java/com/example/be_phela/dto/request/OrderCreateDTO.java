@@ -23,6 +23,10 @@ public class OrderCreateDTO {
     @NotBlank(message = "Payment method is required")
     private PaymentMethod paymentMethod;
 
-    @NotBlank(message = "Cart items IDs are required for cart-based orders")
-    private List<String> cartItemIds;
+    private String promotionCode;
+
+    @NotBlank(message = "Cart ID is required")
+    private String cartId; // ID giỏ hàng để lấy chi tiết
+
+//    private List<String> orderItems;
 }

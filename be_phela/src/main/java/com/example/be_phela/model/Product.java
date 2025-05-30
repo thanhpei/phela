@@ -38,7 +38,7 @@ public class Product {
 
     @NotNull
     @Column(name = "original_price")
-    private BigDecimal originalPrice;
+    private Double originalPrice;
 
     @Column(name = "image_url")
     private String imageUrl;
@@ -64,6 +64,4 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CartItem> cartItems;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ProductPromotion> productPromotions;
 }

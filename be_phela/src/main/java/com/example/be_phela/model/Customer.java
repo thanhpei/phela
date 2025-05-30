@@ -28,7 +28,7 @@ public class Customer implements UserDetails {
     @Id
     @UuidGenerator
     @Column(name = "id", nullable = false,length = 36)
-    private String id;
+    private String customerId;
 
     @Column(name = "customer_code", nullable = false, unique = true)
     private String customerCode;

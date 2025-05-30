@@ -14,11 +14,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/admin/product")
+@RequestMapping
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProductController {
@@ -26,31 +30,54 @@ public class ProductController {
     ProductMapper productMapper;
 
     // Thêm sản phẩm mới
-    @PostMapping("/create")
-    public ResponseEntity<ProductResponseDTO> createProduct(@Valid @RequestBody ProductCreateDTO productCreateDTO, @RequestParam String categoryCode) {
-        Product savedProduct = productService.createProduct(productCreateDTO, categoryCode);
-        return ResponseEntity.ok(productMapper.toProductResponseDTO(savedProduct));
+    @PostMapping(value = "/api/admin/product/create", consumes = {"multipart/form-data"})
+    public ResponseEntity<ProductResponseDTO> createProduct(
+            @Valid @RequestPart("product") ProductCreateDTO productCreateDTO,
+            @RequestPart(value = "categoryCode") String categoryCode,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        try {
+            Product savedProduct = productService.createProduct(productCreateDTO, categoryCode, image);
+            return ResponseEntity.ok(productMapper.toProductResponseDTO(savedProduct));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null, null, null, null, null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ProductResponseDTO(e.getMessage(),null, null, null, null, null));
+        }
     }
 
     // Cập nhật sản phẩm
-    @PutMapping("/{productId}")
+    @PutMapping(value = "/api/admin/product/{productId}", consumes = {"multipart/form-data"})
     public ResponseEntity<ProductResponseDTO> updateProduct(
             @PathVariable String productId,
-            @Valid @RequestBody ProductCreateDTO productCreateDTO,
-            @RequestParam String categoryCode) {
-        Product updatedProduct = productService.updateProduct(productId, productCreateDTO, categoryCode);
-        return ResponseEntity.ok(productMapper.toProductResponseDTO(updatedProduct));
+            @Valid @RequestPart("product") ProductCreateDTO productCreateDTO,
+            @RequestPart(value = "categoryCode") String categoryCode,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        try {
+            if (image != null && !image.isEmpty()) {
+                productCreateDTO.setImageUrl(null); // Reset imageUrl to force update with new image
+            }
+            Product updatedProduct = productService.updateProduct(productId, productCreateDTO, categoryCode, image);
+            return ResponseEntity.ok(productMapper.toProductResponseDTO(updatedProduct));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null, null, null, null, null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ProductResponseDTO(e.getMessage(),null, null, null, null, null));
+        }
     }
 
     // Chuyển trạng thái ẩn/hiện của sản phẩm
-    @PatchMapping("/{productId}/toggle-status")
+    @PatchMapping("/api/admin/product/{productId}/toggle-status")
     public ResponseEntity<ProductResponseDTO> toggleProductStatus(@PathVariable String productId) {
         Product updatedProduct = productService.toggleProductStatus(productId);
         return ResponseEntity.ok(productMapper.toProductResponseDTO(updatedProduct));
     }
 
     //Xoá sản phẩm
-    @DeleteMapping("/delete/{productId}")
+    @DeleteMapping("/api/admin/product/delete/{productId}")
     public ResponseEntity<Void> deleteProduct(@PathVariable String productId) throws IllegalAccessException {
         if (productId == null || productId.trim().isEmpty()) {
             throw new IllegalAccessException("Product ID cannot be null or empty");
@@ -60,7 +87,7 @@ public class ProductController {
     }
 
     // Lấy tất c sản phẩm
-    @GetMapping("/all")
+    @GetMapping("/api/product/all")
     public ResponseEntity<Page<ProductResponseDTO>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -71,8 +98,8 @@ public class ProductController {
         return ResponseEntity.ok(productPage);
     }
 
-    // Lấy tất cả sản phaamr theo id
-    @GetMapping("/get/{productId}")
+    // Lấy sản phẩm theo id
+    @GetMapping("/api/product/get/{productId}")
     public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable String productId) throws IllegalAccessException {
         if (productId == null || productId.trim().isEmpty()) {
             throw new IllegalAccessException("Product ID cannot be null or empty");
@@ -82,14 +109,14 @@ public class ProductController {
     }
 
     // Lấy sản phẩm theo mã sản phẩm
-    @GetMapping("/code/{productCode}")
+    @GetMapping("/api/product/code/{productCode}")
     public ResponseEntity<ProductResponseDTO> getProductByCode(@PathVariable String productCode) {
         Product product = productService.getProductByCode(productCode);
         return ResponseEntity.ok(productMapper.toProductResponseDTO(product));
     }
 
     // Tìm kiếm sản phẩm
-    @GetMapping("/search")
+    @GetMapping("/api/admin/product/search")
     public ResponseEntity<Page<ProductResponseDTO>> searchProducts(
             @RequestParam String prefix,
             @RequestParam(defaultValue = "0") int page,
@@ -102,7 +129,7 @@ public class ProductController {
     }
 
     // Lấy sản phẩm theo trạng thái
-    @GetMapping("/status/{status}")
+    @GetMapping("/api/admin/product/status/{status}")
     public ResponseEntity<Page<ProductResponseDTO>> getProductsByStatus(
             @PathVariable ProductStatus status,
             @RequestParam(defaultValue = "0") int page,
@@ -115,7 +142,7 @@ public class ProductController {
     }
 
     // Lọc sản phẩm theo danh mục với phân trang
-    @GetMapping("/category/{categoryCode}")
+    @GetMapping("/api/product/category/{categoryCode}")
     public ResponseEntity<Page<ProductResponseDTO>> getProductsByCategory(
             @PathVariable String categoryCode,
             @RequestParam(defaultValue = "0") int page,

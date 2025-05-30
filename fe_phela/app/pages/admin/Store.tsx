@@ -84,8 +84,8 @@ const Store = () => {
     setError(null);
     try {
       const url = cityFilter
-        ? `/api/admin/branch/by-city?city=${cityFilter}`
-        : '/api/admin/branch?page=0&size=10';
+        ? `/api/branch/by-city?city=${cityFilter}`
+        : '/api/branch?page=0&size=10';
       const response = await api.get(url);
       const formattedBranches = Array.isArray(response.data)
       ? response.data.map((branch: any) => ({ ...branch, status: branch.status.toString() }))
@@ -348,15 +348,15 @@ const Store = () => {
                   <td className="border border-gray-200 p-2">{branch.district}</td>
                   <td className="border border-gray-200 p-2">
                     {branch.status === 'SHOW' ? (
-                      <span className="text-green-600">Hoạt động</span>
+                      <span className="text-yellow-800">Hoạt động</span>
                     ) : (
-                      <span className="text-red-600">Ngừng hoạt động</span>
+                      <span className="text-yellow-800">Ngừng hoạt động</span>
                     )}
                   </td>
                   <td className="border border-gray-200 p-2 space-x-2">
                     <button
                       onClick={() => openEditModal(branch)}
-                      className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                      className="bg-amber-700 text-white px-3 py-1 rounded hover:bg-amber-800"
                     >
                       Cập nhật
                     </button>
@@ -364,8 +364,8 @@ const Store = () => {
                   <td className='border border-gray-200 p-2 space-x-2'>
                     <button
                       onClick={() => toggleStatus(branch.branchCode)}
-                      className={`${branch.status === 'SHOW' ? 'bg-red-500' : 'bg-green-500'
-                        } text-white px-3 py-1 rounded hover:${branch.status === 'SHOW' ? 'bg-red-600' : 'bg-green-600'
+                      className={`${branch.status === 'SHOW' ? 'bg-red-800' : 'bg-green-800'
+                        } text-white px-3 py-1 rounded hover:${branch.status === 'SHOW' ? 'bg-red-900' : 'bg-green-900'
                         }`}
                     >
                       {branch.status === 'SHOW' ? 'Tắt' : 'Bật'}
@@ -394,7 +394,7 @@ const Store = () => {
               setMapPosition([21.0278, 105.8342]);
               setIsModalOpen(true);
             }}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            className="bg-yellow-900 text-white px-4 py-2 rounded hover:bg-yellow-800 transition duration-200"
           >
             Thêm cửa hàng
           </button>

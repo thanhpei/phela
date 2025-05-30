@@ -21,20 +21,20 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/admin/categories")
+@RequestMapping
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CategoryController {
     CategoryService categoryService;
     CategoryMapper categoryMapper;
 
-    @PostMapping("/create")
+    @PostMapping("/api/admin/categories/create")
     public ResponseEntity<CategoryResponseDTO> createCategory(@Valid @RequestBody CategoryCreateDTO categoryCreateDTO) {
         CategoryResponseDTO createdCategory = categoryService.createCategory(categoryCreateDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCategory);
     }
 
-    @GetMapping("/getAll")
+    @GetMapping("/api/categories/getAll")
     public ResponseEntity<Page<CategoryResponseDTO>> getAllCategories(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -45,13 +45,13 @@ public class CategoryController {
         return ResponseEntity.ok(categoryPage);
     }
 
-    @GetMapping("/{categoryCode}")
+    @GetMapping("/api/admin/categories/{categoryCode}")
     public ResponseEntity<CategoryResponseDTO> getCategoryByCode(@PathVariable String categoryCode) {
         CategoryResponseDTO category = categoryService.getCategoryByCode(categoryCode);
         return ResponseEntity.ok(category);
     }
 
-    @PutMapping("/{categoryCode}")
+    @PutMapping("/api/admin/categories/{categoryCode}")
     public ResponseEntity<CategoryResponseDTO> updateCategory(
             @PathVariable String categoryCode,
             @Valid @RequestBody CategoryCreateDTO categoryCreateDTO) {
@@ -59,13 +59,13 @@ public class CategoryController {
         return ResponseEntity.ok(updatedCategory);
     }
 
-    @DeleteMapping("/{categoryCode}")
+    @DeleteMapping("/api/admin/categories/{categoryCode}")
     public ResponseEntity<Void> deleteCategory(@PathVariable String categoryCode) {
         categoryService.deleteCategory(categoryCode);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/search")
+    @GetMapping("/api/admin/categories/search")
     public ResponseEntity<List<CategoryResponseDTO>> findCategoriesByName(@RequestParam String categoryName) {
         List<CategoryResponseDTO> categories = categoryService.findCategoriesByName(categoryName);
         return ResponseEntity.ok(categories);

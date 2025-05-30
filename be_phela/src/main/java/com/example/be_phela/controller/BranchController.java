@@ -21,14 +21,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/admin/branch")
+@RequestMapping
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BranchController {
     BranchService branchService;
     BranchMapper branchMapper;
 
-    @PostMapping("/create")
+    @PostMapping("/api/admin/branch/create")
     public ResponseEntity<BranchRepositoryDTO> createBranch(@RequestBody BranchCreateDTO branchDTO) {
         try {
             Branch branch = branchService.createBranch(branchDTO);
@@ -38,7 +38,7 @@ public class BranchController {
         }
     }
 
-    @GetMapping
+    @GetMapping("/api/branch")
     public ResponseEntity<Page<BranchRepositoryDTO>> getAllBranches(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -48,7 +48,7 @@ public class BranchController {
         return ResponseEntity.ok(branchDTOs);
     }
 
-    @GetMapping("/{branchCode}")
+    @GetMapping("/api/branch/{branchCode}")
     public ResponseEntity<BranchRepositoryDTO> getBranchById(@PathVariable String branchCode) {
         try {
             Branch branch = branchService.getBranchByCode(branchCode);
@@ -58,7 +58,7 @@ public class BranchController {
         }
     }
 
-    @PutMapping("/{branchCode}")
+    @PutMapping("/api/admin/branch/{branchCode}")
     public ResponseEntity<BranchRepositoryDTO> updateBranch(@PathVariable String branchCode, @RequestBody BranchCreateDTO branchDTO) {
         try {
             Branch updatedBranch = branchService.updateBranch(branchCode, branchDTO);
@@ -70,7 +70,7 @@ public class BranchController {
         }
     }
 
-    @GetMapping("/by-city")
+    @GetMapping("/api/branch/by-city")
     public ResponseEntity<List<BranchRepositoryDTO>> findBranchesByCity(@RequestParam String city) {
         List<Branch> branches = branchService.findBranchesByCity(city);
         List<BranchRepositoryDTO> branchDTOs = branches.stream()
@@ -79,7 +79,7 @@ public class BranchController {
         return ResponseEntity.ok(branchDTOs);
     }
 
-    @PatchMapping("/{branchCode}/toggle-status")
+    @PatchMapping("/api/admin/branch/{branchCode}/toggle-status")
     public ResponseEntity<BranchRepositoryDTO> toggleBranchStatus(@PathVariable String branchCode) {
         try {
             Branch updatedBranch = branchService.toggleBranchStatus(branchCode);

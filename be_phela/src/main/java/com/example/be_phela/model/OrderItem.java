@@ -33,5 +33,5 @@ public class OrderItem {
     private Integer quantity;
 
     @Column(name = "amount", nullable = false)
-    private BigDecimal amount;
+    private Double amount;
 }

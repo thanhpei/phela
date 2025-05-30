@@ -5,5 +5,6 @@ import com.example.be_phela.dto.response.OrderResponseDTO;
 
 public interface IOrderService {
     OrderResponseDTO createOrderFromCart(OrderCreateDTO orderCreateDTO);
+    void confirmBankTransferPayment(String orderId); // Xác nhận thanh toán chuyển khoản
 
 }

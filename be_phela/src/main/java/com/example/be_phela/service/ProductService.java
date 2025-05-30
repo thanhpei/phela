@@ -15,6 +15,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.cloudinary.Cloudinary;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +29,7 @@ public class ProductService implements IProductService {
     ProductRepository productRepository;
     CategoryRepository categoryRepository;
     ProductMapper productMapper;
+    FileStorageService fileStorageService;
 
     // Tạo mã sản phẩm
     private String generateProductCode() {
@@ -37,9 +44,14 @@ public class ProductService implements IProductService {
     // Thêm sản phẩm mới
     @Override
     @Transactional
-    public Product createProduct(ProductCreateDTO productDTO, String categoryCode) {
+    public Product createProduct(ProductCreateDTO productDTO, String categoryCode, MultipartFile image) throws IOException {
         Category category = categoryRepository.findByCategoryCode(categoryCode)
                 .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
+
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = fileStorageService.storeFile(image);
+            productDTO.setImageUrl(imageUrl);
+        }
 
         Product product = productMapper.toProduct(productDTO);
         product.setProductCode(generateProductCode());
@@ -51,16 +63,21 @@ public class ProductService implements IProductService {
     // Cập nhật sản phẩm
     @Override
     @Transactional
-    public Product updateProduct(String productId, ProductCreateDTO productDTO, String categoryCode) {
+    public Product updateProduct(String productId, ProductCreateDTO productDTO, String categoryCode, MultipartFile image) throws IOException {
         Product existingProduct = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
 
         Category category = categoryRepository.findByCategoryCode(categoryCode)
                 .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
 
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = fileStorageService.storeFile(image);
+            productDTO.setImageUrl(imageUrl);
+        }
+
         existingProduct.setProductName(productDTO.getProductName());
         existingProduct.setDescription(productDTO.getDescription());
-        existingProduct.setOriginalPrice(productDTO.getOriginalPrice());
+        existingProduct.setOriginalPrice(productDTO.getOriginalPrice() != null ? productDTO.getOriginalPrice().doubleValue() : existingProduct.getOriginalPrice());
         existingProduct.setImageUrl(productDTO.getImageUrl());
         existingProduct.setCategory(category);
 

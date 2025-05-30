@@ -13,9 +13,10 @@ import java.math.BigDecimal;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ProductResponseDTO {
 
+    private String productCode;
     private String productName;
     private String description;
-    private BigDecimal originalPrice;
+    private Double originalPrice;
     private String imageUrl;
     private ProductStatus status;
 }
