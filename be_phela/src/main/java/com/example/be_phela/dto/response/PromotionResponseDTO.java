@@ -2,13 +2,14 @@ package com.example.be_phela.dto.response;
 
 import com.example.be_phela.model.enums.DiscountType;
 import com.example.be_phela.model.enums.PromotionStatus;
-import lombok.AccessLevel;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
-
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PromotionResponseDTO {
     String promotionId;
@@ -19,6 +20,7 @@ public class PromotionResponseDTO {
     Double discountValue;
     Double minimumOrderAmount;
     Double maxDiscountAmount;
+    Double discountAmount;
     LocalDateTime startDate;
     LocalDateTime endDate;
     PromotionStatus status;

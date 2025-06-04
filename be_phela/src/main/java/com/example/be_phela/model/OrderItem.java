@@ -26,12 +26,12 @@ public class OrderItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(name = "price", nullable = false)
-    private BigDecimal price;
-
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
     @Column(name = "amount", nullable = false)
     private Double amount;
+
+    @Column(name = "note")
+    private String note;
 }

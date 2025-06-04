@@ -1,6 +1,8 @@
 package com.example.be_phela.service;
 
 import com.example.be_phela.dto.request.AdminCreateDTO;
+import com.example.be_phela.dto.request.AdminPasswordUpdateDTO;
+import com.example.be_phela.dto.request.AdminUpdateDTO;
 import com.example.be_phela.dto.response.AdminResponseDTO;
 import com.example.be_phela.exception.DuplicateResourceException;
 import com.example.be_phela.exception.ResourceNotFoundException;
@@ -83,20 +85,20 @@ public class AdminService implements IAdminService {
 
     @Override
     @Transactional
-    public AdminResponseDTO updateAdmin(String username, AdminCreateDTO adminDTO, String currentUsername) {
-        log.info("Updating admin with username: {}", username);
+    public AdminResponseDTO updateAdminInfo(String username, AdminUpdateDTO adminDTO) {
+        log.info("Updating admin info with username: {}", username);
         Admin adminToUpdate = adminRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin not found with username: " + username));
 
-        // Kiểm tra quyền: người dùng có thể tự cập nhật thông tin của chính họ
-        // Nếu không phải chính họ, chỉ Super Admin mới được phép cập nhật
-        if (!currentUsername.equals(username)) {
-            Admin currentAdmin = adminRepository.findByUsername(currentUsername)
-                    .orElseThrow(() -> new ResourceNotFoundException("Current admin not found with username: " + currentUsername));
-            if (!currentAdmin.getRole().equals(Roles.SUPER_ADMIN)) {
-                throw new SecurityException("You can only update your own information unless you are a Super Admin");
-            }
-        }
+//        // Kiểm tra quyền: người dùng có thể tự cập nhật thông tin của chính họ
+//        // Nếu không phải chính họ, chỉ Super Admin mới được phép cập nhật
+//        if (!currentUsername.equals(username)) {
+//            Admin currentAdmin = adminRepository.findByUsername(currentUsername)
+//                    .orElseThrow(() -> new ResourceNotFoundException("Current admin not found with username: " + currentUsername));
+//            if (!currentAdmin.getRole().equals(Roles.SUPER_ADMIN)) {
+//                throw new SecurityException("You can only update your own information unless you are a Super Admin");
+//            }
+//        }
 
         // Kiểm tra email trùng lặp
         if (!adminToUpdate.getEmail().equals(adminDTO.getEmail()) && adminRepository.existsByEmail(adminDTO.getEmail())) {
@@ -109,11 +111,9 @@ public class AdminService implements IAdminService {
         adminToUpdate.setGender(adminDTO.getGender());
         adminToUpdate.setEmail(adminDTO.getEmail());
         adminToUpdate.setPhone(adminDTO.getPhone());
-        if (adminDTO.getPassword() != null && !adminDTO.getPassword().isEmpty()) {
-            adminToUpdate.setPassword(passwordEncoder.encode(adminDTO.getPassword()));
-        }
+
         Admin updatedAdmin = adminRepository.save(adminToUpdate);
-        log.info("Admin updated successfully with username: {}", username);
+        log.info("Admin info updated successfully for username: {}", username);
         return adminMapper.toAdminResponseDTO(updatedAdmin);
     }
 
@@ -192,6 +192,19 @@ public class AdminService implements IAdminService {
         adminToUpdate.setBranch(branch);
         Admin updatedAdmin = adminRepository.save(adminToUpdate);
         log.info("Admin assigned to branch {} with username: {}", branchCode, username);
+        return adminMapper.toAdminResponseDTO(updatedAdmin);
+    }
+
+    @Override
+    @Transactional
+    public AdminResponseDTO updateAdminPassword(String username, AdminPasswordUpdateDTO passwordDTO) {
+        log.info("Updating password for admin with username: {}", username);
+
+        Admin adminToUpdate = adminRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Admin not found with username: " + username));
+        adminToUpdate.setPassword(passwordEncoder.encode(passwordDTO.getPassword()));
+        Admin updatedAdmin = adminRepository.save(adminToUpdate);
+        log.info("Admin password updated successfully for username: {}", username);
         return adminMapper.toAdminResponseDTO(updatedAdmin);
     }
 }

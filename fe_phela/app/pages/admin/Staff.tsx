@@ -4,6 +4,7 @@ import api from '~/config/axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '~/AuthContext';
+import { FiEdit, FiPlus, FiSearch, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 interface Admin {
   employCode: string;
@@ -26,9 +27,8 @@ interface Branch {
 const Staff = () => {
   const { user, loading: authLoading } = useAuth();
   const [admins, setAdmins] = useState<Admin[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]); // State lưu danh sách chi nhánh
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [searchUsername, setSearchUsername] = useState<string>('');
   const [searchFullname, setSearchFullname] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
@@ -37,19 +37,17 @@ const Staff = () => {
 
   useEffect(() => {
     if (authLoading) return;
-
     if (!user) {
       window.location.href = '/admin';
       return;
     }
 
     fetchAdmins();
-    fetchBranches(); // Lấy danh sách chi nhánh
+    fetchBranches();
   }, [currentPage, searchUsername, searchFullname, filterRole, user, authLoading]);
 
   const fetchAdmins = async () => {
     setLoading(true);
-    setError(null);
     try {
       let url = `/api/admin/getAll?page=${currentPage}&size=10&sortBy=username`;
       if (searchUsername || searchFullname || filterRole) {
@@ -60,7 +58,6 @@ const Staff = () => {
         url = `/api/admin/search?${params.toString()}`;
       }
       const response = await api.get(url);
-      console.log('API Response:', response.data);
 
       let adminsData: Admin[] = [];
       if (response.data.content) {
@@ -74,7 +71,7 @@ const Staff = () => {
           phone: admin.phone,
           role: admin.role,
           status: admin.status,
-          branch: admin.branch || 'Chưa sắp xếp',
+          branch: admin.branch ? (typeof admin.branch === 'string' ? admin.branch : admin.branch.branchCode) : 'Chưa sắp xếp'
         }));
         setTotalPages(response.data.totalPages);
       } else {
@@ -88,15 +85,14 @@ const Staff = () => {
           phone: admin.phone,
           role: admin.role,
           status: admin.status,
-          branch: admin.branch || 'Chưa sắp xếp',
+          branch: admin.branch ? (typeof admin.branch === 'string' ? admin.branch : admin.branch.branchCode) : 'Chưa sắp xếp'
         }));
         setTotalPages(1);
       }
       setAdmins(adminsData);
     } catch (error: any) {
-      console.error('Error fetching admins:', error.response ? error.response.data : error.message);
-      setError('Không thể tải danh sách nhân viên. Vui lòng thử lại.');
-      toast.error('Lỗi tải danh sách nhân viên. Kiểm tra console để biết thêm chi tiết.');
+      console.error('Error fetching admins:', error);
+      toast.error('Không thể tải danh sách nhân viên. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -104,8 +100,7 @@ const Staff = () => {
 
   const fetchBranches = async () => {
     try {
-      const response = await api.get('/api/admin/branch');
-      console.log('Branches Response:', response.data);
+      const response = await api.get('/api/branch');
       let branchesData: Branch[] = [];
       if (response.data.content) {
         branchesData = response.data.content.map((branch: any) => ({
@@ -113,7 +108,6 @@ const Staff = () => {
           branchName: branch.branchName,
         }));
       } else {
-        // Nếu API trả về List
         branchesData = response.data.map((branch: any) => ({
           branchCode: branch.branchCode,
           branchName: branch.branchName,
@@ -121,242 +115,301 @@ const Staff = () => {
       }
       setBranches(branchesData);
     } catch (error: any) {
-      console.error('Error fetching branches:', error.response ? error.response.data : error.message);
+      console.error('Error fetching branches:', error);
       toast.error('Không thể tải danh sách chi nhánh. Vui lòng thử lại.');
     }
   };
 
   const handleUpdateRole = async (username: string, newRole: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn cập nhật vai trò?')) return;
+    if (!user?.username) {
+      toast.error('Không thể xác thực người dùng. Vui lòng đăng nhập lại.');
+      return;
+    }
+
     try {
-      const response = await api.patch(`/api/admin/${username}/role`, null, {
-        params: { newRole },
+      await api.patch(`/api/admin/${username}/role`, null, {
+        params: { newRole, curentUsername: user.username },
       });
-      setAdmins((prev) =>
-        prev.map((admin) =>
-          admin.username === username ? { ...admin, role: response.data.role } : admin
-        )
-      );
+      setAdmins(prev => prev.map(admin => 
+        admin.username === username ? { ...admin, role: newRole } : admin
+      ));
       toast.success('Cập nhật vai trò thành công!');
     } catch (error: any) {
-      console.error('Error updating role:', error.response ? error.response.data : error.message);
-      toast.error('Không thể cập nhật vai trò. Vui lòng thử lại.');
+      console.error('Error updating role:', error);
+      toast.error(error.response?.data?.message || 'Không thể cập nhật vai trò. Vui lòng thử lại.');
     }
   };
 
   const handleUpdateStatus = async (username: string, newStatus: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn cập nhật trạng thái?')) return;
+    if (!user?.username) {
+      toast.error('Không thể xác thực người dùng. Vui lòng đăng nhập lại.');
+      return;
+    }
+
     try {
-      const response = await api.patch(`/api/admin/${username}/status`, null, {
-        params: { newStatus },
+      await api.patch(`/api/admin/${username}/status`, null, {
+        params: { newStatus, curentUsername: user.username },
       });
-      setAdmins((prev) =>
-        prev.map((admin) =>
-          admin.username === username ? { ...admin, status: response.data.status } : admin
-        )
-      );
+      setAdmins(prev => prev.map(admin => 
+        admin.username === username ? { ...admin, status: newStatus } : admin
+      ));
       toast.success('Cập nhật trạng thái thành công!');
     } catch (error: any) {
-      console.error('Error updating status:', error.response ? error.response.data : error.message);
-      toast.error('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+      console.error('Error updating status:', error);
+      toast.error(error.response?.data?.message || 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
     }
   };
 
   const handleAssignBranch = async (username: string, branchCode: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn gán chi nhánh này?')) return;
+    if (!user?.username) {
+      toast.error('Không thể xác thực người dùng. Vui lòng đăng nhập lại.');
+      return;
+    }
+
     try {
-      const response = await api.patch(`/api/admin/${username}/assign-branch`, null, {
-        params: { branchCode },
+      await api.patch(`/api/admin/${username}/assign-branch`, null, {
+        params: { branchCode, curentUsername: user.username },
       });
-      setAdmins((prev) =>
-        prev.map((admin) =>
-          admin.username === username ? { ...admin, branch: response.data.branch || 'Chưa sắp xếp' } : admin
-        )
-      );
+      setAdmins(prev => prev.map(admin => 
+        admin.username === username ? { 
+          ...admin, 
+          branch: branches.find(b => b.branchCode === branchCode)?.branchName || branchCode 
+        } : admin
+      ));
       toast.success('Gán chi nhánh thành công!');
     } catch (error: any) {
-      console.error('Error assigning branch:', error.response ? error.response.data : error.message);
-      toast.error('Không thể gán chi nhánh. Vui lòng thử lại.');
+      console.error('Error assigning branch:', error);
+      toast.error(error.response?.data?.message || 'Không thể gán chi nhánh. Vui lòng thử lại.');
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'INACTIVE':
-        return 'text-gray-500';
-      case 'PENDING':
-        return 'text-blue-300';
-      case 'BLOCKED':
-        return 'text-red-600';
-      default:
-        return '';
+      case 'ACTIVE': return 'bg-green-100 text-green-800';
+      case 'INACTIVE': return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return 'bg-blue-100 text-blue-800';
+      case 'BLOCKED': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isAdmin = user?.role === 'ADMIN'; // Thêm kiểm tra vai trò Admin
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'SUPER_ADMIN': return 'bg-purple-100 text-purple-800';
+      case 'ADMIN': return 'bg-indigo-100 text-indigo-800';
+      case 'STAFF': return 'bg-blue-100 text-blue-800';
+      case 'DELIVERY_STAFF': return 'bg-cyan-100 text-cyan-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
 
   if (authLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <p>Đang xác thực...</p>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      <ToastContainer />
-      <Header />
-      <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">Quản lý nhân viên</h1>
-
-        {error && <div className="mb-4 text-red-600">{error}</div>}
-
-        <div className="mb-4 flex space-x-4">
+    <div className="min-h-screen bg-gray-50">
+      <ToastContainer position="top-right" autoClose={3000} />
+      <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <Header />
+      </div>
+      
+      <div className="container mx-auto px-4 pt-24 pb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <label className="mr-2 font-medium">Tìm theo username:</label>
-            <input
-              type="text"
-              value={searchUsername}
-              onChange={(e) => setSearchUsername(e.target.value)}
-              className="border rounded p-2"
-              placeholder="Nhập username..."
-              disabled={loading}
-            />
+            <h1 className="text-2xl font-bold text-gray-800">Quản lý nhân viên</h1>
+            <p className="text-gray-600">Danh sách nhân viên trong hệ thống</p>
           </div>
-          <div>
-            <label className="mr-2 font-medium">Tìm theo tên:</label>
-            <input
-              type="text"
-              value={searchFullname}
-              onChange={(e) => setSearchFullname(e.target.value)}
-              className="border rounded p-2"
-              placeholder="Nhập tên..."
-              disabled={loading}
-            />
-          </div>
-          <div>
-            <label className="mr-2 font-medium">Lọc theo vai trò:</label>
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="border rounded p-2"
-              disabled={loading}
-            >
-              <option value="">Tất cả</option>
-              <option value="ADMIN">Admin</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
-              <option value="STAFF">Staff</option>
-              <option value="DELIVERY_STAFF">Delivery Staff</option>
-            </select>
-          </div>
+          
+          {/* <button
+            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors mt-4 md:mt-0"
+            onClick={() => {
+              // Thêm logic mở modal thêm nhân viên mới ở đây
+              toast.info('Chức năng thêm nhân viên mới sẽ được triển khai sau');
+            }}
+          >
+            <FiPlus className="mr-2" />
+            Thêm nhân viên
+          </button> */}
         </div>
 
-        {loading ? (
-          <p>Đang tải danh sách nhân viên...</p>
-        ) : admins.length > 0 ? (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-200 p-2 text-left">Mã NV</th>
-                <th className="border border-gray-200 p-2 text-left">Họ tên</th>
-                <th className="border border-gray-200 p-2 text-left">Username</th>
-                <th className="border border-gray-200 p-2 text-left">Giới tính</th>
-                <th className="border border-gray-200 p-2 text-left">Ngày sinh</th>
-                <th className="border border-gray-200 p-2 text-left">Email</th>
-                <th className="border border-gray-200 p-2 text-left">SĐT</th>
-                <th className="border border-gray-200 p-2 text-left">Vai trò</th>
-                <th className="border border-gray-200 p-2 text-left">Trạng thái</th>
-                <th className="border border-gray-200 p-2 text-left">Chi nhánh</th>
-                <th className="border border-gray-200 p-2 text-left"></th>
-                <th className="border border-gray-200 p-2 text-left"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {admins.map((admin) => (
-                <tr key={admin.username} className="hover:bg-gray-50">
-                  <td className="border border-gray-200 p-2">{admin.employCode}</td>
-                  <td className="border border-gray-200 p-2">{admin.fullname}</td>
-                  <td className="border border-gray-200 p-2">{admin.username}</td>
-                  <td className="border border-gray-200 p-2">{admin.gender}</td>
-                  <td className="border border-gray-200 p-2">{admin.dob}</td>
-                  <td className="border border-gray-200 p-2">{admin.email}</td>
-                  <td className="border border-gray-200 p-2">{admin.phone}</td>
-                  <td className="border border-gray-200 p-2">{admin.role}</td>
-                  <td className={`border border-gray-200 p-2 ${getStatusColor(admin.status)}`}>
-                    {admin.status}
-                  </td>
-                  <td className="border border-gray-200 p-2">
-                    <select
-                      onChange={(e) => handleAssignBranch(admin.username, e.target.value)}
-                      value={admin.branch === 'Chưa sắp xếp' ? '' : admin.branch}
-                      className="border rounded p-1"
-                      disabled={!(isSuperAdmin || isAdmin)} // Chỉ Super Admin hoặc Admin được gán
-                    >
-                      <option value="">Chưa sắp xếp</option>
-                      {branches.map((branch) => (
-                        <option key={branch.branchCode} value={branch.branchCode}>
-                          {branch.branchName}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="border border-gray-200 p-2 space-x-2">
-                    <select
-                      onChange={(e) => handleUpdateRole(admin.username, e.target.value)}
-                      defaultValue={admin.role}
-                      className="border rounded p-1"
-                      disabled={!isSuperAdmin || admin.role === 'SUPER_ADMIN'}
-                    >
-                      <option value="ADMIN">Admin</option>
-                      <option value="SUPER_ADMIN">Super Admin</option>
-                      <option value="STAFF">Staff</option>
-                      <option value="DELIVERY_STAFF">Delivery Staff</option>
-                    </select>
-                  </td>
-                  <td className="border border-gray-200 p-2 space-x-2">
-                    <select
-                      onChange={(e) => handleUpdateStatus(admin.username, e.target.value)}
-                      defaultValue={admin.status}
-                      className="border rounded p-1"
-                      disabled={!isSuperAdmin}
-                    >
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                      <option value="PENDING">Pending</option>
-                      <option value="BLOCKED">Blocked</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>Không có nhân viên nào.</p>
-        )}
-
-        {totalPages > 1 && (
-          <div className="mt-4 flex space-x-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
-              disabled={currentPage === 0 || loading}
-              className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400 disabled:opacity-50"
-            >
-              Trước
-            </button>
-            <span>
-              Trang {currentPage + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages - 1))}
-              disabled={currentPage === totalPages - 1 || loading}
-              className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400 disabled:opacity-50"
-            >
-              Sau
-            </button>
+        <div className="bg-white rounded-xl shadow p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchUsername}
+                onChange={(e) => setSearchUsername(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Tìm theo username..."
+                disabled={loading}
+              />
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchFullname}
+                onChange={(e) => setSearchFullname(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Tìm theo tên..."
+                disabled={loading}
+              />
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiFilter className="text-gray-400" />
+              </div>
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
+                disabled={loading}
+              >
+                <option value="">Tất cả vai trò</option>
+                <option value="ADMIN">Admin</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+                <option value="STAFF">Staff</option>
+                <option value="DELIVERY_STAFF">Delivery Staff</option>
+              </select>
+            </div>
           </div>
-        )}
+
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : admins.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày sinh</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vai trò</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chi nhánh</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {admins.map((admin) => (
+                    <tr key={admin.username} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{admin.employCode}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.fullname}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{admin.username}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(admin.dob)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadge(admin.role)}`}>
+                          {admin.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(admin.status)}`}>
+                          {admin.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select
+                          onChange={(e) => handleAssignBranch(admin.username, e.target.value)}
+                          value={admin.branch === 'Chưa sắp xếp' ? '' : admin.branch}
+                          className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                          disabled={!['SUPER_ADMIN', 'ADMIN'].includes(user?.role || '')}
+                        >
+                          <option value="">Chưa sắp xếp</option>
+                          {branches.map((branch) => (
+                            <option key={branch.branchCode} value={branch.branchCode}>
+                              {branch.branchName}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <select
+                          onChange={(e) => handleUpdateRole(admin.username, e.target.value)}
+                          value={admin.role}
+                          className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                          disabled={user?.role !== 'SUPER_ADMIN' || admin.role === 'SUPER_ADMIN'}
+                        >
+                          <option value="ADMIN">Admin</option>
+                          <option value="SUPER_ADMIN">Super Admin</option>
+                          <option value="STAFF">Staff</option>
+                          <option value="DELIVERY_STAFF">Delivery Staff</option>
+                        </select>
+                        <select
+                          onChange={(e) => handleUpdateStatus(admin.username, e.target.value)}
+                          value={admin.status}
+                          className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                          disabled={user?.role !== 'SUPER_ADMIN'}
+                        >
+                          <option value="ACTIVE">Active</option>
+                          <option value="INACTIVE">Inactive</option>
+                          <option value="PENDING">Pending</option>
+                          <option value="BLOCKED">Blocked</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="mx-auto h-24 w-24 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <h3 className="mt-2 text-lg font-medium text-gray-900">Không có nhân viên nào</h3>
+              <p className="mt-1 text-gray-500">Không tìm thấy nhân viên phù hợp với tiêu chí tìm kiếm của bạn.</p>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Hiển thị trang {currentPage + 1} / {totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+                  disabled={currentPage === 0 || loading}
+                  className="flex items-center px-3 py-1 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <FiChevronLeft className="mr-1" /> Trước
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+                  disabled={currentPage === totalPages - 1 || loading}
+                  className="flex items-center px-3 py-1 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Sau <FiChevronRight className="ml-1" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,14 +1,19 @@
 import React from 'react'
 import Header from '~/components/customer/Header'
 import Footer from '~/components/customer/Footer'
+import camhung from '~/assets/images/cam-hung.jpg'
+import thucong from '~/assets/images/thu-cong.jpg'
+import trachnhiem from '~/assets/images/trach-nhiem.jpg'
 
 const AboutUs = () => {
   return (
     <div className="bg-white">
-      <Header />
+      <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <Header />
+      </div>
       
       {/* Hero Banner */}
-      <div className="bg-gray-200 py-16">
+      <div className="bg-gray-400 py-20 mt-14">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl font-bold uppercase text-white">VỀ PHÊ LA</h1>
         </div>
@@ -80,7 +85,7 @@ const AboutUs = () => {
             </div>
             <div className="md:w-1/2">
               <img 
-                src="https://scontent.fhan2-3.fna.fbcdn.net/v/t39.30808-6/487395699_1069435881873471_7281936279347654638_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=127cfc&_nc_eui2=AeFxXtuY6cCCYl2UfVlf94D6Ml-UROElG2UyX5RE4SUbZb9r3fIigOP8yVGhXBtCjYu59zmlduj9goNgJBLH4kFg&_nc_ohc=bNW8i6nhn3UQ7kNvwGWcsnK&_nc_oc=AdmLAhlVlqatriFT1UiswAS7l_ewni9gsPJlPleBv-eHxYpH-5OIqd2F1k6uJ9rqDe0&_nc_zt=23&_nc_ht=scontent.fhan2-3.fna&_nc_gid=t7rs6SZFe1L8YlAiLc2WQw&oh=00_AfLVMakwuCcp2cpG7dUIeSl0yvM5ckc-TvdFZIkWi_QbMg&oe=6826ECD6" 
+                src={thucong}
                 alt="Thủ công tại Phê La" 
                 className="w-1/2 rounded-lg shadow-lg"
               />
@@ -113,7 +118,7 @@ const AboutUs = () => {
               </p>
             </div>
             <div className="md:w-1/2">
-              <img src="https://scontent.fhan20-1.fna.fbcdn.net/v/t39.30808-6/485587472_1059418006208592_885223586838346058_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeEyX9nwtcOIoGogQf3jBpZLHtmA2UHK9Lke2YDZQcr0udQfuFgA07LgfpWhEd3RO6qZygT2cfqpx_r5SqYl-v0L&_nc_ohc=OWVOmv8lf6EQ7kNvwHhEYLk&_nc_oc=Adnc0iyemMa4FRZ82cKrxU6mX-LKrRoyHzXSu-waD9cH3Vo7jLLVyCTl33iImpweJW0&_nc_zt=23&_nc_ht=scontent.fhan20-1.fna&_nc_gid=hpTOzK0Lu66zZDn8ms1W-w&oh=00_AfKIQlBTZaCtLyVvUospNNqnv8VUhbcreQlIcBZ7nySUoQ&oe=6826DEAE" className="w-1/2 rounded-lg shadow-lg" alt="Cảm hứng tại Phê La" />
+              <img src={camhung} className="w-1/2 rounded-lg shadow-lg" alt="Cảm hứng tại Phê La" />
             </div>
           </div>
           
@@ -126,7 +131,7 @@ const AboutUs = () => {
               </p>
             </div>
             <div className="md:w-1/2">
-              <img src="https://scontent.fhan2-5.fna.fbcdn.net/v/t39.30808-6/484878749_1057107966439596_9210423278686840686_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=127cfc&_nc_eui2=AeGRKs3Cg2HW9tC2jzZJ1CEDbV-SVo0RQlltX5JWjRFCWSejgAvC_5uRsoK1adBHgRHFv2Y0BbctIwqiiDILQgzq&_nc_ohc=IH2AeDTrc34Q7kNvwE0sLWJ&_nc_oc=Adk1QmpLfTSpCTyQTp85ChKCT93W2CxIT3IGEf8KB4A_9KQaGzzEx7dQ5lJ5jn8NLzA&_nc_zt=23&_nc_ht=scontent.fhan2-5.fna&_nc_gid=nxXO9zvSNFlTWWs2F8LjZQ&oh=00_AfIYyGNMoJgVDnP9aQh5bI4zS-kMdTkAy7KKPVT-qarX6A&oe=6826F4AA" className="w-1/2 rounded-lg shadow-lg" alt="Trách nhiệm tại Phê La" />
+              <img src={trachnhiem} className="w-1/2 rounded-lg shadow-lg" alt="Trách nhiệm tại Phê La" />
 
             </div>
           </div>

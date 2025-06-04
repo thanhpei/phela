@@ -1,8 +1,6 @@
 package com.example.be_phela.model;
 
-import com.example.be_phela.model.enums.CartStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,8 +8,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+@ToString(exclude = {"customer", "address", "branch", "cartItems", "promotionCarts"})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,21 +28,27 @@ public class Cart {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id", nullable = true)
+    private Address address;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_code", nullable = true)
+    private Branch branch;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @NotNull(message = "Cart status is required")
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private CartStatus status;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<CartItem> cartItems;
+    @Column(name = "total_amount")
+    private Double totalAmount;
+
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<CartItem> cartItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PromotionCart> promotionCarts;

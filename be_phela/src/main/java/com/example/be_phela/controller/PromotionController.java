@@ -6,9 +6,15 @@ import com.example.be_phela.service.PromotionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/promotion")
@@ -42,5 +48,23 @@ public class PromotionController {
     public ResponseEntity<PromotionResponseDTO> getPromotionById(@PathVariable String promotionId) {
         PromotionResponseDTO responseDTO = promotionService.getPromotionById(promotionId);
         return ResponseEntity.ok(responseDTO);
+    }
+
+    // Lấy tất cả khuyến mãi với phân trang (cho admin)
+    @GetMapping("/admin/all")
+    public ResponseEntity<Page<PromotionResponseDTO>> getAllPromotions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        Page<PromotionResponseDTO> promotions = promotionService.getAllPromotions(pageable);
+        return ResponseEntity.ok(promotions);
+    }
+
+    // Lấy khuyến mãi có hạn cho khách hàng
+    @GetMapping("/active")
+    public ResponseEntity<List<PromotionResponseDTO>> getActivePromotions() {
+        List<PromotionResponseDTO> activePromotions = promotionService.getActivePromotions();
+        return ResponseEntity.ok(activePromotions);
     }
 }

@@ -12,6 +12,9 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CartCreateDTO {
-    private String customerId;
-    private List<CartItemDTO> cartItems;
+    String customerId;
+    String addressId;
+    String branchCode;
+    List<CartItemDTO> cartItems;
+    List<String> promotionIds;
 }

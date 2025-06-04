@@ -29,14 +29,79 @@ public class EmailService {
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
         helper.setTo(email);
-        helper.setSubject("Xác nhận đăng ký tài khoản");
-//        String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
-//        String verificationLink = baseUrl + "/verify?token=" + encodedToken;
+        helper.setSubject("Xác nhận đăng ký tài khoản - Phê La");
+
         String verificationLink = baseUrl + "/verify?token=" + token;
-        String htmlContent = "<h3>Phê La xin chào,</h3>" +
-                "<p>Vui lòng nhấp vào liên kết bên dưới để xác nhận đăng ký tài khoản:</p>" +
-                "<a href=\"" + verificationLink + "\">Xác nhận tài khoản</a>" +
-                "<p>Liên kết này sẽ hết hạn sau 24 giờ.</p>";
+
+        String htmlContent = "<!DOCTYPE html>"
+                + "<html lang='vi'>"
+                + "<head>"
+                + "    <meta charset='UTF-8'>"
+                + "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                + "    <title>Xác nhận đăng ký</title>"
+                + "    <style>"
+                + "        body {"
+                + "            font-family: 'Arial', sans-serif;"
+                + "            line-height: 1.6;"
+                + "            color: #333;"
+                + "            max-width: 600px;"
+                + "            margin: 0 auto;"
+                + "            padding: 20px;"
+                + "        }"
+                + "        .header {"
+                + "            text-align: center;"
+                + "            padding: 20px 0;"
+                + "            background-color: #6F4E37;"
+                + "            color: white;"
+                + "            border-radius: 8px 8px 0 0;"
+                + "        }"
+                + "        .content {"
+                + "            padding: 20px;"
+                + "            background-color: #f9f9f9;"
+                + "            border-radius: 0 0 8px 8px;"
+                + "        }"
+                + "        .button {"
+                + "            display: inline-block;"
+                + "            padding: 12px 24px;"
+                + "            background-color: #6F4E37;"
+                + "            color: white !important;"
+                + "            text-decoration: none;"
+                + "            border-radius: 4px;"
+                + "            font-weight: bold;"
+                + "            margin: 15px 0;"
+                + "        }"
+                + "        .footer {"
+                + "            margin-top: 20px;"
+                + "            font-size: 12px;"
+                + "            color: #777;"
+                + "            text-align: center;"
+                + "        }"
+                + "        .logo {"
+                + "            max-width: 150px;"
+                + "            height: auto;"
+                + "        }"
+                + "    </style>"
+                + "</head>"
+                + "<body>"
+                + "    <div class='header'>"
+                + "        <h1>Chào mừng đến với Phê La</h1>"
+                + "    </div>"
+                + "    <div class='content'>"
+                + "        <p>Xin chào,</p>"
+                + "        <p>Cảm ơn bạn đã đăng ký tài khoản tại Phê La. Vui lòng nhấp vào nút bên dưới để xác nhận địa chỉ email của bạn:</p>"
+                + "        <p style='text-align: center;'>"
+                + "            <a href='" + verificationLink + "' class='button'>XÁC NHẬN EMAIL</a>"
+                + "        </p>"
+                + "        <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>"
+                + "        <p>Liên kết xác nhận sẽ hết hạn sau <strong>24 giờ</strong>.</p>"
+                + "        <div class='footer'>"
+                + "            <p>Trân trọng,<br>Đội ngũ Phê La</p>"
+                + "            <p>© 2024 Phê La. All rights reserved.</p>"
+                + "        </div>"
+                + "    </div>"
+                + "</body>"
+                + "</html>";
+
         helper.setText(htmlContent, true);
 
         log.info("Sending verification email to: {}", email);

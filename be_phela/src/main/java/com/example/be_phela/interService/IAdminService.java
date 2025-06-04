@@ -1,6 +1,8 @@
 package com.example.be_phela.interService;
 
 import com.example.be_phela.dto.request.AdminCreateDTO;
+import com.example.be_phela.dto.request.AdminPasswordUpdateDTO;
+import com.example.be_phela.dto.request.AdminUpdateDTO;
 import com.example.be_phela.dto.request.CustomerCreateDTO;
 import com.example.be_phela.dto.response.AdminResponseDTO;
 import com.example.be_phela.model.Admin;
@@ -18,9 +20,10 @@ public interface IAdminService {
     Admin buildAdmin(AdminCreateDTO adminCreateDTO, String ip);
     Page<AdminResponseDTO> getAllAdmins(Pageable pageable);
     AdminResponseDTO findAdminByUsername(String username);
-    AdminResponseDTO updateAdmin(String username, AdminCreateDTO adminDTO, String currentUsername);
+    AdminResponseDTO updateAdminInfo(String username, AdminUpdateDTO adminDTO);
     List<AdminResponseDTO> searchAdmins(String username, String fullname, Roles role);
     AdminResponseDTO updateAdminRole(String username, Roles newRole, String currentUsername);
     AdminResponseDTO updateAdminStatus(String username, Status newStatus, String currentUsername);
     AdminResponseDTO assignBranchToAdmin(String username, String branchCode, String currentUsername);
+    AdminResponseDTO updateAdminPassword(String username, AdminPasswordUpdateDTO passwordDTO);
 }

@@ -6,6 +6,8 @@ interface Customer {
   username: string;
   email: string;
   gender: string;
+  latitude?: number; 
+  longitude?: number;
 }
 
 // Interface cho dữ liệu Admin
@@ -31,7 +33,7 @@ export const getCustomerProfile = async (username: string) => {
 
 export const updateCustomerProfile = async (username: string, data: Partial<Customer>): Promise<Customer> => {
   try {
-    const response = await api.put(`/api/customer/${username}`, data);
+    const response = await api.put(`/api/customer/updateInfo/${username}`, data);
     return response.data;
   } catch (error) {
     throw new Error('Failed to update customer profile');
@@ -49,9 +51,9 @@ export const getAdminProfile = async (username: string) => {
 };
 
 // Cập nhật thông tin Admin
-export const updateAdminProfile = async (username: string, data: Partial<Admin>) => {
+export const updateAdminProfile = async (username: string, data: Partial<Admin>, currentUsername: string): Promise<Admin> => {
   try {
-    const response = await api.put(`api/admin/${username}`, data);
+    const response = await api.put(`/api/admin/updateInfo/${username}?curentUsername=${currentUsername}`, data);
     return response.data;
   } catch (error) {
     throw new Error('Failed to update admin profile');

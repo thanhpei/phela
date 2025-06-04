@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@ToString(exclude = {"promotionCarts", "promotionOrders"})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -73,7 +74,7 @@ public class Promotion {
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = true)
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

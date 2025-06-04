@@ -5,9 +5,11 @@ import com.example.be_phela.exception.DuplicateResourceException;
 import com.example.be_phela.exception.ResourceNotFoundException;
 import com.example.be_phela.interService.IBranchService;
 import com.example.be_phela.mapper.BranchMapper;
+import com.example.be_phela.model.Address;
 import com.example.be_phela.model.Branch;
 import com.example.be_phela.model.enums.ProductStatus;
 import com.example.be_phela.repository.BranchRepository;
+import com.example.be_phela.utils.DistanceCalculator;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.DuplicateFormatFlagsException;
 import java.util.List;
 import java.util.Optional;
@@ -93,6 +96,12 @@ public class BranchService implements IBranchService {
     }
 
     @Override
+    public List<Branch> findBranchesByDistrict(String district) {
+        log.info("Fetching branches by district: {}", district);
+        return branchRepository.findByDistrictContainsIgnoreCase(district);
+    }
+
+    @Override
     @Transactional
     public Branch toggleBranchStatus(String branchCode) {
         log.info("Toggling status for branch with code: {}", branchCode);
@@ -104,7 +113,24 @@ public class BranchService implements IBranchService {
     }
 
     @Override
-    public Page<Branch> getAllBranches(Pageable pageable) {
-        return branchRepository.findAll(pageable);
+    public List<Branch> getAllBranches() {
+        return branchRepository.findAll();
     }
+
+    @Override
+    public Optional<Branch> findNearestBranch(Address address, List<Branch> branches) {
+        if (address.getLatitude() == null || address.getLongitude() == null) {
+            throw new IllegalStateException("Địa chỉ cần có tọa độ hợp lệ để tìm chi nhánh gần nhất");
+        }
+
+        return branches.stream()
+                .filter(branch -> branch.getLatitude() != null && branch.getLongitude() != null)
+                .min(Comparator.comparingDouble(branch ->
+                        DistanceCalculator.calculateDistance(
+                                address.getLatitude(), address.getLongitude(),
+                                branch.getLatitude(), branch.getLongitude()
+                        )
+                ));
+    }
+
 }

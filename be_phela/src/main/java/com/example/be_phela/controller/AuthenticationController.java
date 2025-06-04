@@ -36,22 +36,18 @@ public class AuthenticationController {
     @PostMapping("/customer/register")
     public ResponseEntity<ApiResponse<AuthenticationResponse>> registerCustomer(
             @Valid @RequestBody CustomerCreateDTO request) {
-//        return handleRegistration(() -> authenticationService.registerCustomer(request),
-//                "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.");
-        // Bọc lời gọi service trong Supplier và xử lý Exception bên trong lambda nếu cần
         Supplier<AuthenticationResponse> registerSupplier = () -> {
             try {
                 return authenticationService.registerCustomer(request);
             } catch (MessagingException e) {
-                // Ném một RuntimeException để handleRegistration có thể bắt bằng catch(Exception e)
-                // Hoặc bạn có thể xử lý cụ thể hơn ở đây nếu muốn
+
                 log.error("MessagingException during customer registration in lambda: {}", e.getMessage());
                 // Quan trọng: Ném RuntimeException để báo hiệu lỗi cho handleRegistration
                 throw new RuntimeException("Registration failed due to email sending issue: " + e.getMessage(), e);
             }
         };
 
-        return handleRegistration(registerSupplier, // Truyền Supplier đã xử lý exception
+        return handleRegistration(registerSupplier,
                 "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.");
     }
 

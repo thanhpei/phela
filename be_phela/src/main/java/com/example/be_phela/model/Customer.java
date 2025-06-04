@@ -88,5 +88,5 @@ public class Customer implements UserDetails {
     }
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<CustomerAddress> customerAddresses;
+    private List<Address> addresses;
 }

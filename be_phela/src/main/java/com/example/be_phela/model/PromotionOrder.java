@@ -24,6 +24,9 @@ public class PromotionOrder {
     @JoinColumn(name = "promotion_id", nullable = false)
     private Promotion promotion;
 
+    @Column(name = "discount_amount", nullable = false)
+    private Double discountAmount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;

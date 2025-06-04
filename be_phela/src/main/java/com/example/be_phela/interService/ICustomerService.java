@@ -2,6 +2,7 @@ package com.example.be_phela.interService;
 
 import com.example.be_phela.dto.request.AdminCreateDTO;
 import com.example.be_phela.dto.request.CustomerCreateDTO;
+import com.example.be_phela.dto.request.CustomerUpdateDTO;
 import com.example.be_phela.dto.response.AdminResponseDTO;
 import com.example.be_phela.dto.response.CustomerResponseDTO;
 import com.example.be_phela.model.Customer;
@@ -14,8 +15,12 @@ import java.util.Optional;
 
 public interface ICustomerService {
     public String generateCustomerCode();
+
     Customer buildCustomer(CustomerCreateDTO customerCreateDTO);
+
     Page<CustomerResponseDTO> getAllCustomers(Pageable pageable);
-    Customer findAdminByUsername(String username);
-    CustomerResponseDTO updateCustomer(String username, CustomerCreateDTO customerCreateDTO);
+
+    CustomerResponseDTO findCustomerByUsername(String username);
+
+    CustomerResponseDTO updateCustomerInfo(String username, CustomerUpdateDTO customerUpdateDTO);
 }

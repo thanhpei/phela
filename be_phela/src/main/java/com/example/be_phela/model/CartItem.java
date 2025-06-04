@@ -32,7 +32,9 @@ public class CartItem {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @NotNull(message = "Price is required")
-    @Column(name = "price", nullable = false)
-    private Double price;
+    @Column(name = "amount", nullable = false)
+    private Double amount;
+
+    @Column(name = "note")
+    private String note;
 }

@@ -1,7 +1,9 @@
 package com.example.be_phela.service;
 
 import com.example.be_phela.dto.request.CustomerCreateDTO;
-import com.example.be_phela.dto.response.AdminResponseDTO;
+import com.example.be_phela.dto.request.CustomerLocationUpdateDTO;
+import com.example.be_phela.dto.request.CustomerPasswordUpdateDTO;
+import com.example.be_phela.dto.request.CustomerUpdateDTO;
 import com.example.be_phela.dto.response.CustomerResponseDTO;
 import com.example.be_phela.exception.DuplicateResourceException;
 import com.example.be_phela.exception.ResourceNotFoundException;
@@ -21,7 +23,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -29,13 +30,13 @@ import java.util.Optional;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CustomerService implements ICustomerService {
     private final CustomerRepository customerRepository;
-    CustomerMapper customerMapper;;
+    CustomerMapper customerMapper;
     BCryptPasswordEncoder passwordEncoder;
     CartService cartService;
 
     public String generateCustomerCode() {
-        long count = customerRepository.count(); // Đếm số lượng Customer hiện có
-        return String.format("KH%06d", count + 1); // Ví dụ: ADM00001, ADM00002
+        long count = customerRepository.count();
+        return String.format("KH%06d", count + 1);
     }
 
     @Override
@@ -51,14 +52,21 @@ public class CustomerService implements ICustomerService {
         customer.setPassword(passwordEncoder.encode(customer.getPassword()));
         customer.setStatus(Status.PENDING);
         customer.setRole(Roles.CUSTOMER);
-
         return customer;
     }
 
     @Transactional
     public Customer saveCustomer(Customer customer) {
-        cartService.createCartForCustomer(customer.getCustomerId());
-        return customerRepository.save(customer);
+        try {
+
+            Customer savedCustomer = customerRepository.save(customer);
+            cartService.createCartForCustomer(savedCustomer.getCustomerId());
+
+            return savedCustomer;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create customer and cart: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -68,28 +76,50 @@ public class CustomerService implements ICustomerService {
     }
 
     @Override
-    public Customer findAdminByUsername(String username) {
-        return customerRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Admin not found with username: " + username));
+    public CustomerResponseDTO findCustomerByUsername(String username) {
+        Customer customer = customerRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with username: " + username));
+        return customerMapper.toCustomerResponseDTO(customer);
     }
 
-    @Override
-    public CustomerResponseDTO updateCustomer(String username, CustomerCreateDTO customerCreateDTO) {
-        Optional<Customer> customer = customerRepository.findByUsername(username);
-        Customer customerUpdate = customer.get();
+    // Cập nhật thông tin chung (email, gender)
+    @Transactional
+    public CustomerResponseDTO updateCustomerInfo(String username, CustomerUpdateDTO customerUpdateDTO) {
+        Customer customer = customerRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with username: " + username));
+
         // Kiểm tra email trùng lặp
-        if (!customerUpdate.getEmail().equals(customerCreateDTO.getEmail()) && customerRepository.existsByEmail(customerCreateDTO.getEmail())) {
+        if (!customer.getEmail().equals(customerUpdateDTO.getEmail()) &&
+                customerRepository.existsByEmail(customerUpdateDTO.getEmail())) {
             throw new DuplicateResourceException("Email already exists");
         }
 
-        customerUpdate.setEmail(customerCreateDTO.getEmail());
-        customerUpdate.setGender(customerCreateDTO.getGender());
-        customerUpdate.setLatitude(customerCreateDTO.getLatitude());
-        customerUpdate.setLongitude(customerCreateDTO.getLongitude());
-        if (customerCreateDTO.getPassword() != null && !customerCreateDTO.getPassword().isEmpty()) {
-            customerUpdate.setPassword(passwordEncoder.encode(customerCreateDTO.getPassword()));
-        }
-        Customer updatedCustomer = customerRepository.save(customerUpdate);
+        customer.setEmail(customerUpdateDTO.getEmail());
+        customer.setGender(customerUpdateDTO.getGender());
+        Customer updatedCustomer = customerRepository.save(customer);
+        return customerMapper.toCustomerResponseDTO(updatedCustomer);
+    }
+
+    // Cập nhật vị trí (latitude, longitude)
+    @Transactional
+    public CustomerResponseDTO updateLocation(String username, CustomerLocationUpdateDTO locationUpdateDTO) {
+        Customer customer = customerRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with username: " + username));
+
+        customer.setLatitude(locationUpdateDTO.getLatitude());
+        customer.setLongitude(locationUpdateDTO.getLongitude());
+        Customer updatedCustomer = customerRepository.save(customer);
+        return customerMapper.toCustomerResponseDTO(updatedCustomer);
+    }
+
+    // Cập nhật mật khẩu
+    @Transactional
+    public CustomerResponseDTO updatePassword(String username, CustomerPasswordUpdateDTO passwordUpdateDTO) {
+        Customer customer = customerRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with username: " + username));
+
+        customer.setPassword(passwordEncoder.encode(passwordUpdateDTO.getPassword()));
+        Customer updatedCustomer = customerRepository.save(customer);
         return customerMapper.toCustomerResponseDTO(updatedCustomer);
     }
 }

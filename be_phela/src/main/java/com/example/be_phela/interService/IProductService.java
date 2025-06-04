@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface IProductService {
     Product createProduct(ProductCreateDTO productDTO, String categoryCode, MultipartFile image) throws IOException;
@@ -17,7 +18,7 @@ public interface IProductService {
 
     Product toggleProductStatus(String productId);
 
-    Page<Product> getProductsByCategory(String categoryCode, Pageable pageable);
+    List<Product> getProductsByCategory(String categoryCode);
 
     void deleteProduct(String productId);
 
@@ -27,7 +28,8 @@ public interface IProductService {
 
     Page<Product> searchProductsByPrefix(String prefix, Pageable pageable);
 
-    Page<Product> getProductsByStatus(ProductStatus status, Pageable pageable);
+    List<Product> getProductsByStatus(ProductStatus status);
 
     Product getProductById(String productId);
+    Page<Product> getProductsByCategoryWithPagination(String categoryCode, Pageable pageable);
 }

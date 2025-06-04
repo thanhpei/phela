@@ -1,28 +1,33 @@
 package com.example.be_phela.service;
 
 import com.example.be_phela.dto.request.OrderCreateDTO;
+import com.example.be_phela.dto.request.OrderItemDTO;
+import com.example.be_phela.dto.response.AddressDTO;
+import com.example.be_phela.dto.response.BranchResponseDTO;
 import com.example.be_phela.dto.response.OrderResponseDTO;
-import com.example.be_phela.exception.ResourceNotFoundException;
-import com.example.be_phela.interService.ICartService;
+import com.example.be_phela.dto.response.PromotionResponseDTO;
 import com.example.be_phela.interService.IOrderService;
-import com.example.be_phela.mapper.OrderMapper;
 import com.example.be_phela.model.*;
-import com.example.be_phela.model.enums.*;
+import com.example.be_phela.model.enums.OrderStatus;
+import com.example.be_phela.model.enums.PaymentMethod;
+import com.example.be_phela.model.enums.PaymentStatus;
+import com.example.be_phela.model.enums.PromotionStatus;
 import com.example.be_phela.repository.*;
+import com.example.be_phela.service.CartService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class OrderService implements IOrderService {
 
     OrderRepository orderRepository;
@@ -30,52 +35,42 @@ public class OrderService implements IOrderService {
     CartRepository cartRepository;
     BranchRepository branchRepository;
     PromotionRepository promotionRepository;
-    OrderMapper orderMapper;
     CartService cartService;
-
-    // Hằng số phí ship
-    private static final double BASE_SHIPPING_FEE = 10000.0; // Phí cơ bản
-    private static final double FEE_PER_KM = 2000.0; // Phí mỗi km
-    private static final double FREE_SHIPPING_THRESHOLD = 500000.0; // Ngưỡng miễn phí ship
+    AddressRepository addressRepository;
 
     private String generateOrderCode() {
         long count = orderRepository.count();
         return String.format("ORD%05d", count + 1);
     }
+
     @Override
     @Transactional
     public OrderResponseDTO createOrderFromCart(OrderCreateDTO orderCreateDTO) {
-        // Tìm giỏ hàng
+        // Kiểm tra giỏ hàng
         Cart cart = cartRepository.findById(orderCreateDTO.getCartId())
                 .orElseThrow(() -> new RuntimeException("Cart not found with id: " + orderCreateDTO.getCartId()));
-        if (!cart.getCustomer().getCustomerId().equals(orderCreateDTO.getCustomerId())) {
-            throw new RuntimeException("Cart does not belong to customer");
+
+        // Kiểm tra địa chỉ
+        Address address = addressRepository.findById(orderCreateDTO.getAddressId())
+                .orElseThrow(() -> new RuntimeException("Address not found with id: " + orderCreateDTO.getAddressId()));
+        if (!address.getCustomer().getCustomerId().equals(cart.getCustomer().getCustomerId())) {
+            throw new RuntimeException("Address does not belong to this customer");
         }
 
-        // Tìm khách hàng
-        Customer customer = customerRepository.findById(orderCreateDTO.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + orderCreateDTO.getCustomerId()));
+        // Kiểm tra chi nhánh
+        Branch branch = branchRepository.findById(orderCreateDTO.getBranchCode())
+                .orElseThrow(() -> new RuntimeException("Branch not found with code: " + orderCreateDTO.getBranchCode()));
 
-        // Tìm địa chỉ giao hàng
-        CustomerAddress shippingAddress = customer.getCustomerAddresses().stream()
-                .filter(ca -> ca.getCustomerAddressId().equals(orderCreateDTO.getAddressId()))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Shipping address not found"));
+        // Lấy thông tin giỏ hàng
+        double totalAmount = cartService.calculateCartTotalFromItems(cart);
+        double shippingFee = cartService.calculateShippingFee(cart.getCartId());
+        double discount = cart.getPromotionCarts().stream()
+                .mapToDouble(PromotionCart::getDiscountAmount)
+                .sum();
+        double finalAmount = totalAmount + shippingFee - discount;
 
-        // Tìm chi nhánh
-        Branch branch = branchRepository.findById(orderCreateDTO.getBranchId())
-                .orElseGet(() -> determineNearestBranch(customer.getLatitude(), customer.getLongitude()));
-        if (branch == null) {
-            throw new RuntimeException("No branch found");
-        }
-
-        // Tính tổng tiền giỏ hàng
-        Double cartTotal = cartService.calculateCartTotal(orderCreateDTO.getCartId());
-        Double finalTotal = cartTotal;
+        // Xử lý khuyến mãi nếu có
         Promotion promotion = null;
-        boolean freeShipping = false;
-
-        // Áp dụng khuyến mãi nếu có
         if (orderCreateDTO.getPromotionCode() != null) {
             promotion = promotionRepository.findByPromotionCode(orderCreateDTO.getPromotionCode())
                     .orElseThrow(() -> new RuntimeException("Promotion not found with code: " + orderCreateDTO.getPromotionCode()));
@@ -84,64 +79,63 @@ public class OrderService implements IOrderService {
                     LocalDateTime.now().isAfter(promotion.getEndDate())) {
                 throw new RuntimeException("Promotion is not valid or expired");
             }
-            finalTotal = calculateOrderTotalWithPromotion(cart, promotion);
-            // Kiểm tra miễn phí ship từ khuyến mãi
-            freeShipping = cartTotal >= (promotion.getMinimumOrderAmount() != null ? promotion.getMinimumOrderAmount() : FREE_SHIPPING_THRESHOLD);
-        } else if (cartTotal >= FREE_SHIPPING_THRESHOLD) {
-            freeShipping = true;
         }
 
-        // Tính phí ship
-        Double shippingFee = freeShipping ? 0.0 : calculateShippingFee(shippingAddress, branch);
-
-        // Tạo đơn hàng
+        // Tạo đơn hàng nhưng chưa có orderItems và promotionOrders
         Order order = Order.builder()
+                .orderId(UUID.randomUUID().toString())
                 .orderCode(generateOrderCode())
-                .totalAmount(finalTotal)
-                .customer(customer)
-                .shippingAddress(shippingAddress)
+                .totalAmount(totalAmount)
+                .customer(cart.getCustomer())
+                .address(address)
                 .branch(branch)
-                .status(orderCreateDTO.getPaymentMethod() == PaymentMethod.CASH ? OrderStatus.CONFIRMED : OrderStatus.PROCESSING)
+                .status(OrderStatus.PENDING)
                 .orderDate(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .shippingFee(0.0) // Có thể tính phí ship dựa trên khoảng cách
+                .shippingFee(shippingFee)
+                .finalAmount(finalAmount)
                 .paymentMethod(orderCreateDTO.getPaymentMethod())
-                .paymentStatus(orderCreateDTO.getPaymentMethod() == PaymentMethod.CASH ? PaymentStatus.PENDING : PaymentStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
                 .build();
 
-        // Chuyển CartItem sang OrderItem
-        List<OrderItem> orderItems = cart.getCartItems().stream().map(cartItem -> OrderItem.builder()
-                .orders(order)
-                .product(cartItem.getProduct())
-                .price(new BigDecimal(cartItem.getPrice()))
-                .quantity(cartItem.getQuantity())
-                .amount(cartItem.getPrice() * cartItem.getQuantity())
-                .build()).toList();
-        order.setOrderItems(orderItems);
-
-        // Lưu khuyến mãi nếu có
-        if (promotion != null) {
-            PromotionOrder promotionOrder = PromotionOrder.builder()
-                    .promotion(promotion)
-                    .order(order)
-                    .appliedAt(LocalDateTime.now())
-                    .build();
-            order.setPromotionOrders(List.of(promotionOrder));
-        }
-
+        // Lưu order trước để có ID
         Order savedOrder = orderRepository.save(order);
 
-        // Tích điểm nếu thanh toán bằng tiền mặt
-        if (orderCreateDTO.getPaymentMethod() == PaymentMethod.CASH) {
-            customer.setPointUse(customer.getPointUse() + 1);
-            customerRepository.save(customer);
+        // Tạo danh sách OrderItem từ CartItem
+        final Order finalOrder = savedOrder; // Biến final để sử dụng trong lambda
+        List<OrderItem> orderItems = cart.getCartItems().stream()
+                .map(cartItem -> OrderItem.builder()
+                        .orders(finalOrder)
+                        .product(cartItem.getProduct())
+                        .quantity(cartItem.getQuantity())
+                        .amount(cartItem.getAmount())
+                        .note(cartItem.getNote())
+                        .build())
+                .collect(Collectors.toList());
+
+        // Gán danh sách OrderItem vào savedOrder
+        savedOrder.setOrderItems(orderItems);
+
+        // Tạo danh sách PromotionOrder nếu có khuyến mãi
+        if (promotion != null) {
+            PromotionOrder promotionOrder = PromotionOrder.builder()
+                    .order(savedOrder)
+                    .promotion(promotion)
+                    .discountAmount(discount)
+                    .build();
+            savedOrder.setPromotionOrders(List.of(promotionOrder));
         }
 
-        // Xóa giỏ hàng sau khi đặt đơn
-        cartService.clearCartItems(orderCreateDTO.getCartId());
+        // Lưu lại sau khi cập nhật orderItems và promotionOrders
+        orderRepository.save(savedOrder);
 
-        return orderMapper.toOrderResponseDTO(savedOrder);
+        // Xóa giỏ hàng sau khi tạo đơn hàng thành công
+        cartService.clearCartItems(cart.getCartId());
+
+        // Chuyển đổi sang DTO
+        return convertToResponseDTO(savedOrder);
     }
+
     @Override
     @Transactional
     public void confirmBankTransferPayment(String orderId) {
@@ -165,57 +159,117 @@ public class OrderService implements IOrderService {
         customerRepository.save(customer);
     }
 
-    private Double calculateOrderTotalWithPromotion(Cart cart, Promotion promotion) {
-        Double baseTotal = cart.getCartItems().stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
-                .sum();
-        if (promotion.getDiscountType() == com.example.be_phela.model.enums.DiscountType.PERCENTAGE) {
-            Double discount = baseTotal * (promotion.getDiscountValue() / 100);
-            if (promotion.getMaxDiscountAmount() != null) {
-                discount = Math.min(discount, promotion.getMaxDiscountAmount());
-            }
-            return baseTotal - discount;
-        } else if (promotion.getDiscountType() == com.example.be_phela.model.enums.DiscountType.FIXED_AMOUNT) {
-            return Math.max(baseTotal - promotion.getDiscountValue(), 0.0);
-        }
-        return baseTotal;
+    @Override
+    @Transactional
+    public OrderResponseDTO getOrderById(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        return convertToResponseDTO(order);
     }
 
-    private Branch determineNearestBranch(Double latitude, Double longitude) {
-        if (latitude == null || longitude == null) {
-            return branchRepository.findAll().stream().findFirst()
-                    .orElseThrow(() -> new RuntimeException("No branches available"));
+    @Override
+    @Transactional
+    public void cancelOrder(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        if (order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new RuntimeException("Order cannot be cancelled in current status");
         }
-        // Logic tính khoảng cách (Haversine formula)
-        return branchRepository.findAll().stream()
-                .min((b1, b2) -> {
-                    double dist1 = calculateDistance(latitude, longitude, b1.getLatitude(), b1.getLongitude());
-                    double dist2 = calculateDistance(latitude, longitude, b2.getLatitude(), b2.getLongitude());
-                    return Double.compare(dist1, dist2);
-                })
-                .orElseThrow(() -> new RuntimeException("No branches available"));
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        // Hoàn lại điểm nếu đã tích
+        if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
+            Customer customer = order.getCustomer();
+            customer.setPointUse(customer.getPointUse() - 1);
+            customerRepository.save(customer);
+        }
     }
 
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // Bán kính trái đất (km)
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+    @Override
+    @Transactional
+    public void updateOrderStatus(String orderId, OrderStatus status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        if (status == OrderStatus.PENDING || status == order.getStatus()) {
+            throw new RuntimeException("Invalid status transition");
+        }
+        order.setStatus(status);
+        order.setUpdatedAt(LocalDateTime.now());
+
+        // Cập nhật thời gian giao hàng nếu đơn hàng đã giao
+        if (status == OrderStatus.DELIVERED) {
+            order.setDeliveryDate(LocalDateTime.now());
+        }
+        orderRepository.save(order);
     }
 
-    private Double calculateShippingFee(CustomerAddress shippingAddress, Branch branch) {
-        if (shippingAddress.getLatitude() == null || shippingAddress.getLongitude() == null ||
-                branch.getLatitude() == null || branch.getLongitude() == null) {
-            return BASE_SHIPPING_FEE; // Phí mặc định nếu thiếu tọa độ
-        }
+    @Override
+    @Transactional
+    public List<OrderResponseDTO> getOrdersByCustomerId(String customerId) {
+        List<Order> orders = orderRepository.findByCustomer_CustomerId(customerId);
+        return orders.stream()
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
 
-        double distance = calculateDistance(
-                shippingAddress.getLatitude(), shippingAddress.getLongitude(),
-                branch.getLatitude(), branch.getLongitude());
-        return BASE_SHIPPING_FEE + (distance * FEE_PER_KM);
+    // Helper method: Chuyển đổi từ Order entity sang OrderResponseDTO
+    private OrderResponseDTO convertToResponseDTO(Order order) {
+        return OrderResponseDTO.builder()
+                .orderId(order.getOrderId())
+                .orderCode(order.getOrderCode())
+                .totalAmount(order.getTotalAmount())
+                .customerId(order.getCustomer().getCustomerId())
+                .addressId(order.getAddress().getAddressId())
+                .address(AddressDTO.builder()
+                        .addressId(order.getAddress().getAddressId())
+                        .city(order.getAddress().getCity())
+                        .district(order.getAddress().getDistrict())
+                        .ward(order.getAddress().getWard())
+                        .recipientName(order.getAddress().getRecipientName())
+                        .phone(order.getAddress().getPhone())
+                        .detailedAddress(order.getAddress().getDetailedAddress())
+                        .latitude(order.getAddress().getLatitude())
+                        .longitude(order.getAddress().getLongitude())
+                        .isDefault(order.getAddress().getIsDefault())
+                        .build())
+                .branchCode(order.getBranch().getBranchCode())
+                .branch(BranchResponseDTO.builder()
+                        .branchCode(order.getBranch().getBranchCode())
+                        .branchName(order.getBranch().getBranchName())
+                        .latitude(order.getBranch().getLatitude())
+                        .longitude(order.getBranch().getLongitude())
+                        .city(order.getBranch().getCity())
+                        .district(order.getBranch().getDistrict())
+                        .address(order.getBranch().getAddress())
+                        .status(order.getBranch().getStatus())
+                        .build())
+                .status(order.getStatus())
+                .orderDate(order.getOrderDate())
+                .updatedAt(order.getUpdatedAt())
+                .deliveryDate(order.getDeliveryDate())
+                .shippingFee(order.getShippingFee())
+                .finalAmount(order.getFinalAmount())
+                .paymentMethod(order.getPaymentMethod())
+                .paymentStatus(order.getPaymentStatus())
+                .orderItems(order.getOrderItems().stream()
+                        .map(item -> OrderItemDTO.builder()
+                                .productId(item.getProduct().getProductId())
+                                .quantity(item.getQuantity())
+                                .price(item.getAmount() / item.getQuantity()) // Tạm tính giá
+                                .amount(item.getAmount())
+                                .note(item.getNote())
+                                .build())
+                        .collect(Collectors.toList()))
+                .promotionOrders(order.getPromotionOrders().stream()
+                        .map(po -> PromotionResponseDTO.builder()
+                                .promotionId(po.getPromotion().getPromotionId())
+                                .promotionCode(po.getPromotion().getPromotionCode())
+                                .discountAmount(po.getDiscountAmount())
+                                .description(po.getPromotion().getDescription())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
     }
 }

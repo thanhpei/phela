@@ -1,24 +1,29 @@
 package com.example.be_phela.dto.response;
 
 import com.example.be_phela.dto.request.CartItemDTO;
-import com.example.be_phela.model.enums.CartStatus;
-import lombok.Builder;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CartResponseDTO {
-    private String cartId;
-    private String customerId;
-    private LocalDateTime createdAt;
-    private CartStatus status;
-    private LocalDateTime updatedAt;
-    private List<CartItemDTO> cartItems;
-    private Double totalAmount;
+    String cartId;
+    String customerId;
+    String addressId;
+    AddressDTO address;
+    String branchCode;
+    BranchResponseDTO branch;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
+    List<CartItemDTO> cartItems;
+    List<PromotionResponseDTO> promotionCarts;
+    Double totalAmount;
+    Double shippingFee;
+    Double finalAmount;
 }

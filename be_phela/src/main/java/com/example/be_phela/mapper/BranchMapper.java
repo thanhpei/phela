@@ -1,7 +1,7 @@
 package com.example.be_phela.mapper;
 
 import com.example.be_phela.dto.request.BranchCreateDTO;
-import com.example.be_phela.dto.response.BranchRepositoryDTO;
+import com.example.be_phela.dto.response.BranchResponseDTO;
 import com.example.be_phela.model.Branch;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -16,7 +16,7 @@ public interface BranchMapper {
 
     @Mapping(source = "branchCode", target = "branchCode")
     @Mapping(source = "address", target = "address")
-    BranchRepositoryDTO toBranchRepositoryDTO(Branch branch);
+    BranchResponseDTO toBranchRepositoryDTO(Branch branch);
 
     @Named("mapStringToBranch")
     default Branch mapStringToBranch(String branchCode) {

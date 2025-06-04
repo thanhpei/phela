@@ -1,9 +1,9 @@
 import type { Route } from "./+types/recruitment";
-import Recruitment from "~/pages/customer/recruitment/Recruitment";
+import Recruitment from "~/pages/admin/recruitment/Recruitment";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Tuyển dụng - Phê La" },
+    { title: "Quản lý tin tuyển dụng | Phê La " },
     { name: "Tuyển dụng", content: "Phê La!" },
   ];
 }

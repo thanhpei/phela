@@ -14,4 +14,5 @@ public interface BranchRepository extends JpaRepository<Branch, String> {
     List<Branch> findAll();
     Boolean existsByBranchCode(String branchCode);
     List<Branch> findByCityContainsIgnoreCase(String city);
+    List<Branch> findByDistrictContainsIgnoreCase(String district);
 }

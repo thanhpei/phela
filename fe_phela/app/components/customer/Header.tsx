@@ -66,6 +66,18 @@ function Header() {
                     >
                       Thông tin cá nhân
                     </Link>
+                    <Link
+                      to="/my-address"
+                      className="dropdown-item uppercase no-underline"
+                    >
+                      Quản lý địa chỉ giao hàng
+                    </Link>
+                    <Link
+                      to="/my-orders"
+                      className="dropdown-item uppercase no-underline"
+                    >
+                      Đơn hàng của tôi
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="dropdown-item uppercase w-full text-left"

@@ -1,41 +1,38 @@
 package com.example.be_phela.controller;
 
-import com.example.be_phela.dto.request.CartCreateDTO;
 import com.example.be_phela.dto.request.CartItemDTO;
-import com.example.be_phela.dto.request.CartItemRequestDTO;
 import com.example.be_phela.dto.response.CartResponseDTO;
-import com.example.be_phela.interService.ICartService;
-import com.example.be_phela.mapper.CartMapper;
-import com.example.be_phela.model.Cart;
-import com.example.be_phela.repository.CartRepository;
 import com.example.be_phela.service.CartService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/customer/cart")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CartController {
+
     CartService cartService;
-    CartMapper cartMapper;
-    CartRepository cartRepository;
 
-
-    @PostMapping("/add")
-    public ResponseEntity<CartResponseDTO> createOrUpdateCart(@Valid @RequestBody CartCreateDTO cartDTO) {
-        CartResponseDTO responseDTO = cartService.createOrUpdateCart(cartDTO);
-        return ResponseEntity.ok(responseDTO);
+    @PostMapping("/create/{customerId}")
+    public ResponseEntity<CartResponseDTO> createCartForCustomer(@PathVariable String customerId) {
+        cartService.createCartForCustomer(customerId);
+        CartResponseDTO cartResponse = cartService.getCartByCustomerId(customerId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(cartResponse);
     }
 
     @GetMapping("/getCustomer/{customerId}")
     public ResponseEntity<CartResponseDTO> getCartByCustomerId(@PathVariable String customerId) {
-        Cart cart = cartService.getCartByCustomerId(customerId);
-        return ResponseEntity.ok(cartMapper.toCartResponseDTO(cart));
+        return ResponseEntity.ok(cartService.getCartByCustomerId(customerId));
     }
 
     @DeleteMapping("/{cartId}/clear")
@@ -47,11 +44,9 @@ public class CartController {
     @PostMapping("/{cartId}/items")
     public ResponseEntity<CartResponseDTO> addOrUpdateCartItem(
             @PathVariable String cartId,
-            @RequestBody CartItemDTO cartItemDTO) {
+            @Valid @RequestBody CartItemDTO cartItemDTO) {
         cartService.addOrUpdateCartItem(cartId, cartItemDTO);
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
-        return ResponseEntity.ok(cartMapper.toCartResponseDTO(cart));
+        return ResponseEntity.ok(cartService.getCartByCartId(cartId));
     }
 
     @DeleteMapping("/{cartId}/items/{productId}")
@@ -63,18 +58,72 @@ public class CartController {
     }
 
     @GetMapping("/{cartId}/total")
-    public ResponseEntity<Double> calculateCartTotal(@PathVariable String cartId) {
-        Double total = cartService.calculateCartTotal(cartId);
-        return ResponseEntity.ok(total);
+    public ResponseEntity<CartResponseDTO> calculateCartTotal(@PathVariable String cartId) {
+        return ResponseEntity.ok(cartService.getCartByCartId(cartId));
+    }
+
+    @GetMapping("/{cartId}/shipping-fee")
+    public ResponseEntity<CartResponseDTO> calculateShippingFee(@PathVariable String cartId) {
+        return ResponseEntity.ok(cartService.getCartByCartId(cartId));
     }
 
     @PostMapping("/{cartId}/apply-promotion")
-    public ResponseEntity<CartResponseDTO> applyPromotionToCart(
+    public ResponseEntity<Map<String, Object>> applyPromotionToCart(
             @PathVariable String cartId,
-            @RequestParam String promotionCode) {
-        cartService.applyPromotionToCart(cartId, promotionCode);
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
-        return ResponseEntity.ok(cartMapper.toCartResponseDTO(cart));
+            @RequestBody Map<String, String> request) {
+        String promotionCode = request.get("promotionCode");
+        Map<String, Object> response = new HashMap<>();
+        try {
+            cartService.applyPromotionToCart(cartId, promotionCode);
+            response.put("success", true);
+            response.put("data", cartService.getCartByCartId(cartId));
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @PostMapping("/{cartId}/remove-promotion")
+    public ResponseEntity<CartResponseDTO> removePromotionFromCart(
+            @PathVariable String cartId,
+            @RequestParam String promotionId) {
+        cartService.removePromotionFromCart(cartId, promotionId);
+        return ResponseEntity.ok(cartService.getCartByCartId(cartId));
+    }
+
+    @PatchMapping("/{cartId}/update-address")
+    public ResponseEntity<CartResponseDTO> updateCartAddress(
+            @PathVariable String cartId,
+            @RequestParam String addressId) {
+        cartService.updateCartAddress(cartId, addressId);
+        return ResponseEntity.ok(cartService.getCartByCartId(cartId));
+    }
+
+    @PatchMapping("/{cartId}/update-branch")
+    public ResponseEntity<CartResponseDTO> updateCartBranch(
+            @PathVariable String cartId,
+            @RequestParam String branchCode) {
+        cartService.updateCartBranch(cartId, branchCode);
+        return ResponseEntity.ok(cartService.getCartByCartId(cartId));
+    }
+
+    @GetMapping("/{cartId}/item-count")
+    public ResponseEntity<Integer> countItemsInCart(@PathVariable String cartId) {
+        return ResponseEntity.ok(cartService.countItemsInCart(cartId));
+    }
+
+    @GetMapping("/{cartId}/items")
+    public ResponseEntity<List<CartItemDTO>> getCartItems(@PathVariable String cartId) {
+        return ResponseEntity.ok(cartService.getCartItems(cartId));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleException(Exception ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("message", "An unexpected error occurred: " + ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

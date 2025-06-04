@@ -8,6 +8,7 @@ import org.hibernate.validator.constraints.UUID;
 
 import java.time.LocalDateTime;
 
+@ToString(exclude = {"promotion", "cart"})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,6 +28,9 @@ public class PromotionCart {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
+
+    @Column(name = "discount_amount", nullable = false)
+    private Double discountAmount;
 
     @CreationTimestamp
     @Column(name = "applied_at", nullable = false)

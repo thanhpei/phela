@@ -14,8 +14,8 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
 //                        .allowedOrigins("http://localhost:3000", "http://localhost:3001") // Cho phép rõ ràng nguồn gốc của frontend
-                        .allowedOrigins("*")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedOrigins("*","http://localhost:3000", "http://localhost:3001")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH")
                         .allowedHeaders("*")
                         .exposedHeaders("Access-Control-Allow-Origin", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers")
                         .allowCredentials(false)

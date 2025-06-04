@@ -48,13 +48,19 @@ public class ProductService implements IProductService {
         Category category = categoryRepository.findByCategoryCode(categoryCode)
                 .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
 
+        // Upload ảnh lên Cloudinary và lấy URL
         if (image != null && !image.isEmpty()) {
+            System.out.println("Uploading image for new product...");
             String imageUrl = fileStorageService.storeFile(image);
+            System.out.println("Image URL received: " + imageUrl);
             productDTO.setImageUrl(imageUrl);
+        } else {
+            System.out.println("No image provided for new product.");
         }
 
         Product product = productMapper.toProduct(productDTO);
         product.setProductCode(generateProductCode());
+        product.setImageUrl(productDTO.getImageUrl());
         product.setCategory(category);
         product.setStatus(ProductStatus.SHOW); // Mặc định trạng thái là SHOW khi tạo mới
         return productRepository.save(product);
@@ -70,9 +76,12 @@ public class ProductService implements IProductService {
         Category category = categoryRepository.findByCategoryCode(categoryCode)
                 .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
 
+
         if (image != null && !image.isEmpty()) {
-            String imageUrl = fileStorageService.storeFile(image);
-            productDTO.setImageUrl(imageUrl);
+            String newImageUrl = fileStorageService.storeFile(image);
+            productDTO.setImageUrl(newImageUrl);
+        } else if (productDTO.getImageUrl() != null) {
+            productDTO.setImageUrl(productDTO.getImageUrl());
         }
 
         existingProduct.setProductName(productDTO.getProductName());
@@ -97,10 +106,10 @@ public class ProductService implements IProductService {
 
     // Lọc sản phẩm theo danh mục
     @Override
-    public Page<Product> getProductsByCategory(String categoryCode, Pageable pageable) {
+    public List<Product> getProductsByCategory(String categoryCode) {
         Category category = categoryRepository.findById(categoryCode)
                 .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
-        return productRepository.findByCategory(category, pageable);
+        return productRepository.findByCategory_CategoryCode(category.getCategoryCode());
     }
 
     //Xoa san pham
@@ -142,8 +151,8 @@ public class ProductService implements IProductService {
 
     @Override
     // Lấy sản phẩm theo trạng thái
-    public Page<Product> getProductsByStatus(ProductStatus status, Pageable pageable) {
-        return productRepository.findByStatus(status, pageable);
+    public List<Product> getProductsByStatus(ProductStatus status) {
+        return productRepository.findByStatus(status);
     }
 
 
@@ -153,5 +162,15 @@ public class ProductService implements IProductService {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
     }
+
+    // Lọc sản phẩm theo danh mục với phân trang
+    @Override
+    public Page<Product> getProductsByCategoryWithPagination(String categoryCode, Pageable pageable) {
+        Category category = categoryRepository.findByCategoryCode(categoryCode)
+                .orElseThrow(() -> new RuntimeException("Category not found with code: " + categoryCode));
+        return productRepository.findByCategory_CategoryCode(category.getCategoryCode(), pageable);
+    }
+
+
 
 }

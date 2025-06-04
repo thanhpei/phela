@@ -1,12 +1,15 @@
 package com.example.be_phela.controller;
 
 import com.example.be_phela.dto.request.AdminCreateDTO;
+import com.example.be_phela.dto.request.AdminPasswordUpdateDTO;
+import com.example.be_phela.dto.request.AdminUpdateDTO;
 import com.example.be_phela.dto.response.AdminResponseDTO;
 import com.example.be_phela.mapper.AdminMapper;
 import com.example.be_phela.model.Admin;
 import com.example.be_phela.model.enums.Roles;
 import com.example.be_phela.model.enums.Status;
 import com.example.be_phela.service.AdminService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -45,12 +48,11 @@ public class AdminController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @PutMapping("/{username}")
-    public ResponseEntity<AdminResponseDTO> updateAdmin(
+    @PutMapping("/updateInfo/{username}")
+    public ResponseEntity<AdminResponseDTO> updateAdminInfo(
             @PathVariable String username,
-            @RequestBody AdminCreateDTO adminDTO,
-            Principal principal) {
-        AdminResponseDTO updatedAdmin = adminService.updateAdmin(username, adminDTO, principal.getName());
+            @RequestBody @Valid AdminUpdateDTO adminDTO) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdminInfo(username, adminDTO);
         return ResponseEntity.ok(updatedAdmin);
     }
 
@@ -67,8 +69,8 @@ public class AdminController {
     public ResponseEntity<AdminResponseDTO> updateAdminRole(
             @PathVariable String username,
             @RequestParam Roles newRole,
-            Principal principal) {
-        AdminResponseDTO updatedAdmin = adminService.updateAdminRole(username, newRole, principal.getName());
+            @RequestParam String curentUsername) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdminRole(username, newRole, curentUsername);
         return ResponseEntity.ok(updatedAdmin);
     }
 
@@ -76,8 +78,8 @@ public class AdminController {
     public ResponseEntity<AdminResponseDTO> updateAdminStatus(
             @PathVariable String username,
             @RequestParam Status newStatus,
-            Principal principal) {
-        AdminResponseDTO updatedAdmin = adminService.updateAdminStatus(username, newStatus, principal.getName());
+            @RequestParam String curentUsername) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdminStatus(username, newStatus, curentUsername);
         return ResponseEntity.ok(updatedAdmin);
     }
 
@@ -85,9 +87,16 @@ public class AdminController {
     public ResponseEntity<AdminResponseDTO> assignBranchToAdmin(
             @PathVariable String username,
             @RequestParam String branchCode,
-            Principal principal) {
-        AdminResponseDTO updatedAdmin = adminService.assignBranchToAdmin(username, branchCode, principal.getName());
+            @RequestParam String curentUsername) {
+        AdminResponseDTO updatedAdmin = adminService.assignBranchToAdmin(username, branchCode, curentUsername);
         return ResponseEntity.ok(updatedAdmin);
     }
 
+    @PatchMapping("/{username}/password")
+    public ResponseEntity<AdminResponseDTO> updateAdminPassword(
+            @PathVariable String username,
+            @RequestBody AdminPasswordUpdateDTO passwordDTO) {
+        AdminResponseDTO updatedAdmin = adminService.updateAdminPassword(username, passwordDTO);
+        return ResponseEntity.ok(updatedAdmin);
+    }
 }

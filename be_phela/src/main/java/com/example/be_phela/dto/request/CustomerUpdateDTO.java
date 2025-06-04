@@ -1,20 +1,35 @@
 package com.example.be_phela.dto.request;
 
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
-@Getter
-@Setter
-
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CustomerUpdateDTO {
-    @NotNull(message = "Tên khách hàng không được để trống")
-    @NotBlank(message = "Tên khách hàng không được chứa toàn khoảng trắng")
-    @Size(max = 100, message = "Tên không được vượt quá 100 ký tự")
-    private String name;
 
-    @NotNull(message = "Email không được để trống")
+    // Password có thể để trống khi update (không bắt buộc thay đổi)
+    @Size(min = 8, max = 128, message = "Mật khẩu phải có ít nhất 8 ký tự")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,128}$",
+            message = "Mật khẩu phải chứa ít nhất một chữ hoa, chữ thường, số và ký tự đặc biệt")
+    private String password;
+
+    @NotBlank(message = "Email không được để trống")
     @Email(message = "Email không hợp lệ")
     private String email;
 
+    @NotBlank(message = "Giới tính không được để trống")
+    private String gender;
+
+    // Validation cho latitude và longitude
+    @DecimalMin(value = "-90.0", message = "Latitude phải >= -90")
+    @DecimalMax(value = "90.0", message = "Latitude phải <= 90")
+    private Double latitude;
+
+    @DecimalMin(value = "-180.0", message = "Longitude phải >= -180")
+    @DecimalMax(value = "180.0", message = "Longitude phải <= 180")
+    private Double longitude;
 }

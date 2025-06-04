@@ -10,8 +10,14 @@ import com.example.be_phela.repository.PromotionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -71,5 +77,34 @@ public class PromotionService implements IPromotionService {
         Promotion promotion = promotionRepository.findById(promotionId)
                 .orElseThrow(() -> new RuntimeException("Promotion not found with id: " + promotionId));
         return promotionMapper.toResponseDTO(promotion);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PromotionResponseDTO> getAllPromotions(Pageable pageable) {
+        Page<Promotion> promotions = promotionRepository.findAll(pageable);
+        return promotions.map(promotionMapper::toResponseDTO);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromotionResponseDTO> getActivePromotions() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Lấy các khuyến mãi ACTIVE và còn hạn
+        List<Promotion> activePromotions = promotionRepository.findByStatusAndStartDateBeforeAndEndDateAfter(
+                PromotionStatus.ACTIVE, now, now);
+
+        // Kiểm tra và cập nhật trạng thái tự động
+        List<Promotion> allPromotions = promotionRepository.findAll();
+        for (Promotion promotion : allPromotions) {
+            if (promotion.getStatus() == PromotionStatus.ACTIVE && now.isAfter(promotion.getEndDate())) {
+                promotion.setStatus(PromotionStatus.EXPIRED);
+                promotionRepository.save(promotion);
+            }
+        }
+
+        return activePromotions.stream()
+                .map(promotionMapper::toResponseDTO)
+                .collect(Collectors.toList());
     }
 }

@@ -13,6 +13,7 @@ interface UserBase {
 
 interface AdminUser extends UserBase {
   type: 'admin';
+  adminId: string;
   fullname: string;
   email: string;
   phone: string;
@@ -22,6 +23,7 @@ interface AdminUser extends UserBase {
 
 interface CustomerUser extends UserBase {
   type: 'customer';
+  customerId: string;
   email: string;
   gender: string;
   latitude?: number;
@@ -113,7 +115,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let updatedProfile;
       
       if (user.type === 'admin') {
-        updatedProfile = await updateAdminProfile(user.username, data);
+        const currentUsername = user.username;
+        updatedProfile = await updateAdminProfile(user.username, data, currentUsername);
       } else {
         updatedProfile = await updateCustomerProfile(user.username, data);
       }
@@ -163,3 +166,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export const isCustomerUser = (user: User): user is CustomerUser => user.type === 'customer';
+export const isAdminUser = (user: User): user is AdminUser => user.type === 'admin';

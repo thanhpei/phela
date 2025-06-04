@@ -3,17 +3,8 @@
         {
           "id":1,
           "title": "Sản phẩm",
-          "link": "/#",
-          "subMenu": [
-            {
-              "title": "Sản phẩm",
-              "link": "/san-pham"
-            },
-            {
-              "title": "Order",
-              "link": "/order"
-            }
-          ]
+          "link": "/san-pham",
+          "subMenu": []
         },
         {
           "id":2,
@@ -58,7 +49,7 @@
         {
           "id":5,
           "title": "Tuyển dụng",
-          "link": "/tuyen-dung",
+          "link": "/#",
           "subMenu": [
             { "title": "Khối văn phòng", "link": "/khoi-van-phong" },
             { "title": "Khối cửa hàng", "link": "/khoi-cua-hang" }

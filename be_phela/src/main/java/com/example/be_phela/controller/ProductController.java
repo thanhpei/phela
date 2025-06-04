@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping
@@ -40,10 +41,10 @@ public class ProductController {
             return ResponseEntity.ok(productMapper.toProductResponseDTO(savedProduct));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null, null, null, null, null));
+                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null,null,null, null, null, null, null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ProductResponseDTO(e.getMessage(),null, null, null, null, null));
+                    .body(new ProductResponseDTO(e.getMessage(),null,null,null, null, null, null, null));
         }
     }
 
@@ -55,17 +56,14 @@ public class ProductController {
             @RequestPart(value = "categoryCode") String categoryCode,
             @RequestPart(value = "image", required = false) MultipartFile image) {
         try {
-            if (image != null && !image.isEmpty()) {
-                productCreateDTO.setImageUrl(null); // Reset imageUrl to force update with new image
-            }
             Product updatedProduct = productService.updateProduct(productId, productCreateDTO, categoryCode, image);
             return ResponseEntity.ok(productMapper.toProductResponseDTO(updatedProduct));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null, null, null, null, null));
+                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null,null,null, null, null, null, null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ProductResponseDTO(e.getMessage(),null, null, null, null, null));
+                    .body(new ProductResponseDTO(e.getMessage(),null,null,null, null, null, null, null));
         }
     }
 
@@ -77,16 +75,16 @@ public class ProductController {
     }
 
     //Xoá sản phẩm
-    @DeleteMapping("/api/admin/product/delete/{productId}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable String productId) throws IllegalAccessException {
-        if (productId == null || productId.trim().isEmpty()) {
-            throw new IllegalAccessException("Product ID cannot be null or empty");
-        }
-        productService.deleteProduct(productId);
-        return ResponseEntity.noContent().build();
-    }
+//    @DeleteMapping("/api/admin/product/delete/{productId}")
+//    public ResponseEntity<Void> deleteProduct(@PathVariable String productId) throws IllegalAccessException {
+//        if (productId == null || productId.trim().isEmpty()) {
+//            throw new IllegalAccessException("Product ID cannot be null or empty");
+//        }
+//        productService.deleteProduct(productId);
+//        return ResponseEntity.noContent().build();
+//    }
 
-    // Lấy tất c sản phẩm
+    // Lấy tất cả sản phẩm
     @GetMapping("/api/product/all")
     public ResponseEntity<Page<ProductResponseDTO>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
@@ -129,20 +127,29 @@ public class ProductController {
     }
 
     // Lấy sản phẩm theo trạng thái
-    @GetMapping("/api/admin/product/status/{status}")
-    public ResponseEntity<Page<ProductResponseDTO>> getProductsByStatus(
-            @PathVariable ProductStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "productName") String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-        Page<ProductResponseDTO> productPage = productService.getProductsByStatus(status, pageable)
-                .map(productMapper::toProductResponseDTO);
-        return ResponseEntity.ok(productPage);
+    @GetMapping("/api/product/status/{status}")
+    public ResponseEntity<List<ProductResponseDTO>> getProductsByStatus(@PathVariable ProductStatus status) {
+        List<Product> products = productService.getProductsByStatus(status);
+        List<ProductResponseDTO> productResponseDTOs = products.stream()
+                .map(productMapper::toProductResponseDTO)
+                .toList();
+        return ResponseEntity.ok(productResponseDTOs);
     }
 
-    // Lọc sản phẩm theo danh mục với phân trang
+    // Lọc sản phẩm theo danh mục
     @GetMapping("/api/product/category/{categoryCode}")
+    public ResponseEntity<List<ProductResponseDTO>> getProductsByCategory(@PathVariable String categoryCode) {
+        if (categoryCode == null || categoryCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Category code is required");
+        }
+        List<Product> products = productService.getProductsByCategory(categoryCode);
+        List<ProductResponseDTO> productResponseDTOs = products.stream()
+                .map(productMapper::toProductResponseDTO)
+                .toList();
+        return ResponseEntity.ok(productResponseDTOs);
+    }
+
+    @GetMapping("/api/admin/product/category/{categoryCode}")
     public ResponseEntity<Page<ProductResponseDTO>> getProductsByCategory(
             @PathVariable String categoryCode,
             @RequestParam(defaultValue = "0") int page,
@@ -152,7 +159,7 @@ public class ProductController {
             throw new IllegalArgumentException("Category code is required");
         }
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-        Page<ProductResponseDTO> productPage = productService.getProductsByCategory(categoryCode, pageable)
+        Page<ProductResponseDTO> productPage = productService.getProductsByCategoryWithPagination(categoryCode, pageable)
                 .map(productMapper::toProductResponseDTO);
         return ResponseEntity.ok(productPage);
     }

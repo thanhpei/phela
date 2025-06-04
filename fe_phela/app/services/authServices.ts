@@ -13,8 +13,8 @@ interface LoginCredentials {
     password: string;
     email: string;
     gender: string;
-    latitude?: number; // Có thể không bắt buộc nếu backend cho phép null
-    longitude?: number; // Có thể không bắt buộc nếu backend cho phép null
+    latitude?: number; 
+    longitude?: number;
   }
   
   // Interface cho dữ liệu đăng ký Admin (dựa trên AdminCreateDTO)

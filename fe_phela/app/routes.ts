@@ -6,7 +6,9 @@ const customerRoutes: RouteConfig = [
 
     // Sản phẩm
     route("san-pham", "routes/product.tsx"),
-    route("order", "routes/order.tsx"),
+    route("san-pham/:productId", "routes/productDetail.tsx"),
+    route("cart", "routes/cart.tsx"),
+    route("payment", "routes/payment.tsx"),
 
     // Câu chuyện thương hiệu
     route("ve-chung-toi", "routes/aboutUs.tsx"),
@@ -22,7 +24,6 @@ const customerRoutes: RouteConfig = [
     route("he-thong-cua-hang", "routes/storePage.tsx"),
 
     // Tuyển dụng
-    route("tuyen-dung", "routes/recruitment.tsx"),
     route("khoi-van-phong", "routes/officeBlock.tsx"),
     route("khoi-cua-hang", "routes/blockOfShops.tsx"),
 
@@ -38,6 +39,8 @@ const customerRoutes: RouteConfig = [
     //Tài khoản
     route("login-register", "routes/loginRegisterCus.tsx"),
     route("profileCustomer", "routes/ProfileCustomer.tsx"),
+    route("my-address", "routes/deliveryAddress.tsx"),
+    route("my-orders", "routes/myOrders.tsx"),
 ];
 
 const adminRoutes: RouteConfig = [
@@ -52,13 +55,16 @@ const adminRoutes: RouteConfig = [
       route("chuong-trinh-khuyen-mai", "routes/promotions.tsx"),
       route("qua-tang", "routes/present.tsx"),
       route("ma-giam-gia", "routes/discountCode.tsx"),
-      route("tich-diem", "routes/accumulatePoints.tsx"),
       route("profileAdmin", "routes/profileAdmin.tsx"),
       route("staff", "routes/staff.tsx"),
       route("store", "routes/storeManage.tsx"),
+      route("tin-tuyen-dung", "routes/recruitment.tsx"),
+      route("ung-vien", "routes/candidate.tsx"),
+      route("banner", "routes/bannerManager.tsx"),
+      route("tin-tuc-admin", "routes/newsManager.tsx"),
 ];
 
-// Try creating the routes without the children property
+
 export default [
   // Route cho giao diện admin
   {

@@ -11,7 +11,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -41,8 +40,8 @@ public class Order {
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shipping_address_id", nullable = false)
-    private CustomerAddress shippingAddress;
+    @JoinColumn(name = "address_id", nullable = false)
+    private Address address;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id", nullable = false)
@@ -71,6 +70,9 @@ public class Order {
     @Builder.Default
     @Column(name = "shipping_fee", nullable = false)
     private Double shippingFee = Double.NaN;
+
+    @Column(name = "final_amount", nullable = false)
+    private Double finalAmount;
 
     @NotNull(message = "Payment method is required")
     @Enumerated(EnumType.STRING)

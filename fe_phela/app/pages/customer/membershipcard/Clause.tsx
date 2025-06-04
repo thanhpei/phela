@@ -5,9 +5,11 @@ import Footer from '~/components/customer/Footer'
 const Clause = () => {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+     <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <Header />
+      </div>
 
-      <main className="flex-grow">
+      <main className="flex-grow mt-14">
         {/* Hero Image */}
         <div className="w-full">
           <img

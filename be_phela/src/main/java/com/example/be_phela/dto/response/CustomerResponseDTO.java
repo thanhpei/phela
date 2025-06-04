@@ -13,6 +13,7 @@ import java.time.LocalDate;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CustomerResponseDTO {
+    String customerId;
     String customerCode;
     String username;
     String gender;

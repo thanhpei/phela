@@ -13,6 +13,7 @@ public interface AdminMapper {
     @Mapping(source = "branch", target = "branch", qualifiedByName = "mapStringToBranch")
     Admin toAdmin(AdminCreateDTO admin);
 
+    @Mapping(source = "id", target = "adminId")
     @Mapping(source = "fullname", target = "fullname")
     @Mapping(source = "branch", target = "branch", qualifiedByName = "mapBranchToString")
     AdminResponseDTO toAdminResponseDTO(Admin admin);

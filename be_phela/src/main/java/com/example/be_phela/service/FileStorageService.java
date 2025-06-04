@@ -1,5 +1,8 @@
 package com.example.be_phela.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,28 +11,27 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
-    @Value("${app.upload.dir:/uploads/images}")
-    private String uploadDir;
+    @Autowired
+    private Cloudinary cloudinary;
 
     public String storeFile(MultipartFile file) throws IOException {
-        // Tạo thư mục nếu chưa tồn tại
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
+        if (file == null || file.isEmpty()) {
+            throw new IOException("File is null or empty");
         }
 
-        // Tạo tên file duy nhất
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path filePath = uploadPath.resolve(fileName);
+        // Upload file lên Cloudinary
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                "upload_preset", "phe_la",
+                "folder", "products"
+        ));
 
-        // Lưu file vào thư mục
-        Files.copy(file.getInputStream(), filePath);
-
-        // Trả về URL tương đối để lưu vào Product.imageUrl
-        return "/images/" + fileName;
+        // Lấy URL của ảnh từ Cloudinary
+        String imageUrl = (String) uploadResult.get("secure_url");
+        return imageUrl;
     }
 }

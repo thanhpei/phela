@@ -3,7 +3,11 @@ package com.example.be_phela.repository;
 import com.example.be_phela.model.Customer;
 import com.example.be_phela.model.enums.Roles;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,4 +18,11 @@ public interface CustomerRepository extends JpaRepository<Customer, String> {
     Boolean existsByEmail(String email);
     Customer save(Customer user);
     List<Customer> findAll();
+
+    @Transactional
+    @Modifying
+    @Query("UPDATE customer c SET c.latitude = :latitude, c.longitude = :longitude WHERE c.username = :username")
+    int updateLocation(@Param("username") String username,
+                       @Param("latitude") double latitude,
+                       @Param("longitude") double longitude);
 }

@@ -3,7 +3,7 @@
         {
           "id":1,
           "title": "Sản phẩm",
-          "link": "/admin/#",
+          "link": "/admin/dashboard",
           "subMenu": [
             {
               "title": "Sản phẩm",
@@ -18,7 +18,7 @@
         {
           "id":2,
           "title": "Bán hàng",
-          "link": "/admin/#",
+          "link": "/admin/dashboard",
           "subMenu": [
             {
               "title": "Đơn hàng",
@@ -33,7 +33,7 @@
         {
           "id":3,
           "title": "Báo cáo",
-          "link": "/admin/#",
+          "link": "/admin/dashboard",
           "subMenu": [
             { "title": "Doanh thu", "link": "/admin/doanh-thu" },
             { "title": "Đơn hàng", "link": "/admin/bao-cao-don-hang" }
@@ -42,7 +42,7 @@
         {
           "id":4,
           "title": "Khuyến mãi",
-          "link": "/admin/#",
+          "link": "/admin/dashboard",
           "subMenu": [
               {
                   "title": "Chương trình khuyến mãi",
@@ -55,10 +55,6 @@
               {
                   "title": "Quà tặng",
                   "link": "/admin/qua-tang"
-              },
-              {
-                  "title": "Tích điểm",
-                  "link": "/admin/tich-diem"
               }
           ]
         },
@@ -73,8 +69,37 @@
           "title": "Cửa hàng",
           "link": "/admin/store",
           "subMenu": []
+        },
+         {
+          "id":7,
+          "title": "Tuyển dụng",
+          "link": "/admin/dashboard",
+          "subMenu": [
+            {
+              "title": "Tin tuyển dụng",
+              "link": "/admin/tin-tuyen-dung"
+            },
+            {
+              "title": "Ứng viên",
+              "link": "/admin/ung-vien"
+            }
+          ]
+        },
+        {
+          "id":8,
+          "title": "Khác",
+          "link": "/admin/dashboard",
+          "subMenu": [
+            {
+              "title": "Quản lý tin tức",
+              "link": "/admin/tin-tuc-admin"
+            },
+            {
+              "title": "Quản lý banner",
+              "link": "/admin/banner"
+            }
+          ]
         }
-
       ]
   }
   
