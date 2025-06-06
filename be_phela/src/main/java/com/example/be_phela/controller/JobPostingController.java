@@ -1,7 +1,9 @@
 package com.example.be_phela.controller;
 
+import com.example.be_phela.dto.request.JobPostingCreateDTO;
+import com.example.be_phela.dto.request.JobPostingUpdateDTO;
+import com.example.be_phela.dto.response.JobPostingDTO;
 import com.example.be_phela.model.Application;
-import com.example.be_phela.model.JobPosting;
 import com.example.be_phela.model.enums.ApplicationStatus;
 import com.example.be_phela.model.enums.JobStatus;
 import com.example.be_phela.service.JobPostingService;
@@ -24,31 +26,31 @@ public class JobPostingController {
     JobPostingService jobPostingService;
 
     @PostMapping
-    public ResponseEntity<JobPosting> createJobPosting(@Valid @RequestBody JobPosting jobPosting) {
-        JobPosting createdJob = jobPostingService.createJobPosting(jobPosting);
+    public ResponseEntity<JobPostingDTO> createJobPosting(@Valid @RequestBody JobPostingCreateDTO createDTO) {
+        JobPostingDTO createdJob = jobPostingService.createJobPosting(createDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdJob);
     }
 
     @GetMapping("/{jobPostingId}")
-    public ResponseEntity<JobPosting> getJobPostingById(@PathVariable String jobPostingId) {
-        return ResponseEntity.ok(jobPostingService.getJobPostingById(jobPostingId));
+    public ResponseEntity<JobPostingDTO> getJobPostingById(@PathVariable String jobPostingId) {
+        return ResponseEntity.ok(jobPostingService.getJobPostingDTOById(jobPostingId));
     }
 
     @GetMapping
-    public ResponseEntity<List<JobPosting>> getAllJobPostings() {
+    public ResponseEntity<List<JobPostingDTO>> getAllJobPostings() {
         return ResponseEntity.ok(jobPostingService.getAllJobPostings());
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<JobPosting>> getActiveJobPostings() {
+    public ResponseEntity<List<JobPostingDTO>> getActiveJobPostings() {
         return ResponseEntity.ok(jobPostingService.getActiveJobPostings());
     }
 
     @PutMapping("/{jobPostingId}")
-    public ResponseEntity<JobPosting> updateJobPosting(
+    public ResponseEntity<JobPostingDTO> updateJobPosting(
             @PathVariable String jobPostingId,
-            @Valid @RequestBody JobPosting jobPosting) {
-        return ResponseEntity.ok(jobPostingService.updateJobPosting(jobPostingId, jobPosting));
+            @Valid @RequestBody JobPostingUpdateDTO updateDTO) {
+        return ResponseEntity.ok(jobPostingService.updateJobPosting(jobPostingId, updateDTO));
     }
 
     @DeleteMapping("/{jobPostingId}")

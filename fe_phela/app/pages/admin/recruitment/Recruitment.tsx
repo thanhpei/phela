@@ -1,9 +1,23 @@
+// Recruitment.tsx (Admin)
 import React, { useState, useEffect } from 'react';
 import Header from '~/components/admin/Header';
 import api from '~/config/axios';
-import '~/assets/css/DeliveryAddress.css'
+import '~/assets/css/DeliveryAddress.css';
 import { FaEdit, FaTrash, FaPlus, FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+
+export enum JobStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+  FILLED = 'FILLED'
+}
+
+export enum ExperienceLevel {
+  FRESHER = 'FRESHER',
+  JUNIOR = 'JUNIOR',
+  SENIOR = 'SENIOR',
+  EXPERT = 'EXPERT'
+}
 
 interface JobPosting {
   jobPostingId: string;
@@ -12,17 +26,28 @@ interface JobPosting {
   description: string;
   requirements: string;
   salaryRange: string;
-  experienceLevel: string;
-  branch: {
-    branchName: string;
-  };
+  experienceLevel: ExperienceLevel;
+  branchCode: string;
+  branchName: string;
   postingDate: string;
   deadline: string;
+  updatedAt: string;
+  status: JobStatus;
+  applicationCount: number;
+}
+
+interface Branch {
+  branchCode: string;
+  branchName: string;
+  city: string;
+  district: string;
+  address: string;
   status: string;
 }
 
 const Recruitment = () => {
   const [jobs, setJobs] = useState<JobPosting[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -31,22 +56,25 @@ const Recruitment = () => {
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/api/job-postings');
-        setJobs(response.data);
+        const [jobsResponse, branchesResponse] = await Promise.all([
+          api.get('/api/job-postings'),
+          api.get('/api/branch')
+        ]);
+        setJobs(jobsResponse.data);
+        setBranches(branchesResponse.data);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching jobs:', error);
+        console.error('Error fetching data:', error);
         setLoading(false);
       }
     };
-    fetchJobs();
+    fetchData();
   }, []);
 
   const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         job.jobCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || job.status === filterStatus.toUpperCase();
     return matchesSearch && matchesStatus;
   });
@@ -64,7 +92,11 @@ const Recruitment = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -82,7 +114,22 @@ const Recruitment = () => {
 
   const openCreateModal = () => {
     setIsEditMode(false);
-    setCurrentJob(null);
+    setCurrentJob({
+      jobPostingId: '',
+      jobCode: '',
+      title: '',
+      description: '',
+      requirements: '',
+      salaryRange: '',
+      experienceLevel: ExperienceLevel.FRESHER,
+      branchCode: branches.length > 0 ? branches[0].branchCode : '',
+      branchName: branches.length > 0 ? branches[0].branchName : '',
+      postingDate: '',
+      deadline: '',
+      updatedAt: '',
+      status: JobStatus.OPEN,
+      applicationCount: 0
+    });
     setShowModal(true);
   };
 
@@ -94,31 +141,55 @@ const Recruitment = () => {
 
   const closeModal = () => {
     setShowModal(false);
+    setCurrentJob(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentJob) return;
+
     try {
-      if (isEditMode && currentJob) {
-        await api.put(`/api/job-postings/${currentJob.jobPostingId}`, currentJob);
+      const payload = {
+        title: currentJob.title,
+        description: currentJob.description,
+        requirements: currentJob.requirements,
+        salaryRange: currentJob.salaryRange,
+        experienceLevel: currentJob.experienceLevel,
+        branchCode: currentJob.branchCode,
+        deadline: currentJob.deadline,
+        status: currentJob.status
+      };
+
+      console.log('Sending payload:', payload);
+
+      if (isEditMode) {
+        await api.put(`/api/job-postings/${currentJob.jobPostingId}`, payload);
       } else {
-        await api.post('/api/job-postings', currentJob);
+        await api.post('/api/job-postings', payload);
       }
-      // Refresh job list
+
       const response = await api.get('/api/job-postings');
       setJobs(response.data);
       closeModal();
     } catch (error) {
       console.error('Error saving job:', error);
+      console.error('Error response:', error); // Debug log
+      alert('Có lỗi khi lưu tin tuyển dụng: ' + (error as any).message);
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setCurrentJob(prev => ({
-      ...prev,
-      [name]: value
-    } as JobPosting));
+    if (name === 'branchCode' && branches.length > 0) {
+      const selectedBranch = branches.find(branch => branch.branchCode === value);
+      setCurrentJob(prev => prev ? {
+        ...prev,
+        branchCode: value,
+        branchName: selectedBranch ? selectedBranch.branchName : prev.branchName
+      } : prev);
+    } else {
+      setCurrentJob(prev => prev ? { ...prev, [name]: value } : prev);
+    }
   };
 
   if (loading) {
@@ -139,7 +210,7 @@ const Recruitment = () => {
       <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
         <Header />
       </div>
-      
+
       <div className="container mx-auto px-4 pt-20 pb-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Quản lý tin tuyển dụng</h1>
@@ -159,7 +230,7 @@ const Recruitment = () => {
               </div>
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tiêu đề hoặc mã tin..."
+                placeholder="Tìm kiếm theo tiêu đề..."
                 className="pl-10 pr-4 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -173,9 +244,9 @@ const Recruitment = () => {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="all">Tất cả trạng thái</option>
-                <option value="open">Đang mở</option>
-                <option value="closed">Đã đóng</option>
-                <option value="filled">Đã tuyển</option>
+                <option value="OPEN">Đang mở</option>
+                <option value="CLOSED">Đã đóng</option>
+                <option value="FILLED">Đã tuyển</option>
               </select>
             </div>
           </div>
@@ -184,12 +255,12 @@ const Recruitment = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã tin</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiêu đề</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chi nhánh</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đăng</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạn nộp</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số ứng viên</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
@@ -197,14 +268,14 @@ const Recruitment = () => {
                 {filteredJobs.length > 0 ? (
                   filteredJobs.map((job) => (
                     <tr key={job.jobPostingId} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{job.jobCode}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.title}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{job.branch.branchName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{job.title}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{job.branchName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(job.postingDate)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(job.deadline)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {getStatusBadge(job.status)}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{job.applicationCount}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
@@ -222,7 +293,7 @@ const Recruitment = () => {
                             <FaTrash />
                           </button>
                           <Link
-                            to={`/admin/recruitment/${job.jobPostingId}/candidates`}
+                            to={`/admin/tin-tuyen-dung/${job.jobPostingId}/candidates`}
                             className="text-green-600 hover:text-green-900"
                             title="Xem ứng viên"
                           >
@@ -245,16 +316,13 @@ const Recruitment = () => {
         </div>
       </div>
 
-      {/* Modal for create/edit */}
-      {showModal && (
+      {showModal && currentJob && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
 
-            {/* Modal content */}
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="flex justify-between items-start">
@@ -270,23 +338,12 @@ const Recruitment = () => {
                 </div>
                 <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Mã tin</label>
-                      <input
-                        type="text"
-                        name="jobCode"
-                        value={currentJob?.jobCode || ''}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
-                        required
-                      />
-                    </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700">Tiêu đề</label>
                       <input
                         type="text"
                         name="title"
-                        value={currentJob?.title || ''}
+                        value={currentJob.title}
                         onChange={handleInputChange}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
                         required
@@ -297,7 +354,7 @@ const Recruitment = () => {
                       <input
                         type="text"
                         name="salaryRange"
-                        value={currentJob?.salaryRange || ''}
+                        value={currentJob.salaryRange}
                         onChange={handleInputChange}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
                         required
@@ -305,21 +362,45 @@ const Recruitment = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Kinh nghiệm</label>
-                      <input
-                        type="text"
+                      <select
                         name="experienceLevel"
-                        value={currentJob?.experienceLevel || ''}
+                        value={currentJob.experienceLevel}
                         onChange={handleInputChange}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
                         required
-                      />
+                      >
+                        <option value="FRESHER">Không cần kinh nghiệm</option>
+                        <option value="JUNIOR">Junior (1-3 năm)</option>
+                        <option value="SENIOR">Senior (3-5 năm)</option>
+                        <option value="EXPERT">Expert (5+ năm)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Chi nhánh</label>
+                      <select
+                        name="branchCode"
+                        value={currentJob.branchCode}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
+                        required
+                      >
+                        {branches.length > 0 ? (
+                          branches.map(branch => (
+                            <option key={branch.branchCode} value={branch.branchCode}>
+                              {branch.branchName} ({branch.branchCode}) - {branch.city}, {branch.district}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Không có chi nhánh nào</option>
+                        )}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Ngày hết hạn</label>
                       <input
                         type="date"
                         name="deadline"
-                        value={currentJob?.deadline ? currentJob.deadline.split('T')[0] : ''}
+                        value={currentJob.deadline ? currentJob.deadline.split('T')[0] : ''}
                         onChange={handleInputChange}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
                         required
@@ -329,7 +410,7 @@ const Recruitment = () => {
                       <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
                       <select
                         name="status"
-                        value={currentJob?.status || 'OPEN'}
+                        value={currentJob.status}
                         onChange={handleInputChange}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
                       >
@@ -343,7 +424,7 @@ const Recruitment = () => {
                     <label className="block text-sm font-medium text-gray-700">Mô tả công việc</label>
                     <textarea
                       name="description"
-                      value={currentJob?.description || ''}
+                      value={currentJob.description}
                       onChange={handleInputChange}
                       rows={4}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"
@@ -354,7 +435,7 @@ const Recruitment = () => {
                     <label className="block text-sm font-medium text-gray-700">Yêu cầu công việc</label>
                     <textarea
                       name="requirements"
-                      value={currentJob?.requirements || ''}
+                      value={currentJob.requirements}
                       onChange={handleInputChange}
                       rows={4}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary"

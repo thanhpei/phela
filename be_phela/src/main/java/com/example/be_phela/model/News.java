@@ -1,4 +1,35 @@
 package com.example.be_phela.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@Entity(name = "news")
 public class News {
+    @Id
+    @UuidGenerator
+    @Column(name = "news_id", nullable = false, unique = true)
+    private String newsId;
+    @Column(name = "title")
+    private String title;
+    @Column(name = "summary")
+    private String summary;
+    @Column(name = "content")
+    private String content;
+    @Column(name = "thumbnailUrl")
+    private String thumbnailUrl;
+    @Column(name = "createdAt")
+    private LocalDateTime createdAt;
+    @Column(name = "updatedAt")
+    private LocalDateTime updatedAt;
 }

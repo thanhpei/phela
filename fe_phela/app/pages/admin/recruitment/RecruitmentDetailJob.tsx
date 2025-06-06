@@ -24,39 +24,40 @@ interface Candidate {
   updatedAt: string;
 }
 
-const Candidate = () => {
+const RecruitmentDetailJob = () => {
+
+  
   const { jobPostingId } = useParams();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [jobTitle, setJobTitle] = useState('Tất cả ứng viên');
+  const [jobTitle, setJobTitle] = useState('');
+
+console.log('Job Posting ID from URL:', jobPostingId);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (jobPostingId) {
-          // Fetch job details
-          const jobResponse = await api.get(`/api/job-postings/${jobPostingId}`);
-          setJobTitle(jobResponse.data.title ? `Ứng viên cho: ${jobResponse.data.title}` : 'Không tìm thấy tiêu đề');
+          const [jobResponse, candidatesResponse] = await Promise.all([
+            api.get(`/api/job-postings/${jobPostingId}`),
+            api.get(`/api/applications/job-postings/${jobPostingId}`)
+          ]);
 
-          // Fetch candidates for this job
-          const candidatesResponse = await api.get(`/api/applications/job-postings/${jobPostingId}`);
-          const candidatesWithJobTitle = candidatesResponse.data.map((candidate: any) => ({
-            ...candidate,
-            jobTitle: jobResponse.data.title
-          }));
-          setCandidates(candidatesWithJobTitle);
+          setJobTitle(jobResponse.data.title || 'Không có tiêu đề');
+          
+          const candidatesData = candidatesResponse.data || [];
+          setCandidates(Array.isArray(candidatesData) ? candidatesData : []);
         } else {
-          // Fetch all candidates
           const response = await api.get('/api/applications');
-          setCandidates(response.data || []);
+          setCandidates(Array.isArray(response.data) ? response.data : []);
         }
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setCandidates([]); 
+      } finally {
         setLoading(false);
-        alert('Có lỗi khi tải dữ liệu: ' + (error as Error).message);
       }
     };
     fetchData();
@@ -94,23 +95,54 @@ const Candidate = () => {
   };
 
   const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
-    try {
-      if (!jobPostingId) {
-        alert('Vui lòng chọn công việc cụ thể để cập nhật trạng thái');
-        return;
-      }
+    // Kiểm tra jobPostingId trước khi gọi API
+    if (!jobPostingId) {
+      alert('Không thể cập nhật trạng thái: Thiếu thông tin Job Posting ID.');
+      return;
+    }
 
-      // Fixed: Use query parameter instead of request body
-      await api.patch(
-        `/api/job-postings/${jobPostingId}/applications/${applicationId}/status?status=${newStatus}`
-      );
+    try {
+      const url = `/api/job-postings/${jobPostingId}/applications/${applicationId}/status?status=${newStatus}`;
+      await api.patch(url, null, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
       setCandidates(candidates.map(candidate =>
         candidate.applicationId === applicationId ? { ...candidate, status: newStatus } : candidate
       ));
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Có lỗi khi cập nhật trạng thái: ' + (error as Error).message);
+      alert(`Có lỗi khi cập nhật trạng thái ứng viên: ${(error as Error).message || 'Lỗi không xác định. Vui lòng kiểm tra Job Posting ID.'}`);
+    }
+  };
+
+  const sendEmail = (email: string) => {
+    window.open(`mailto:${email}`, '_blank');
+  };
+
+  const viewCandidateDetails = async (applicationId: string) => {
+    if (!jobPostingId) {
+      alert('Không thể xem chi tiết ứng viên: Thiếu thông tin Job Posting ID.');
+      return;
+    }
+
+    try {
+      const response = await api.get(`/api/job-postings/${jobPostingId}/applications/${applicationId}`);
+      const candidate = response.data;
+      alert(`
+        Chi tiết ứng viên:
+        - Tên: ${candidate.fullName}
+        - Email: ${candidate.email}
+        - Số điện thoại: ${candidate.phone}
+        - Ngày ứng tuyển: ${formatDate(candidate.applicationDate)}
+        - Trạng thái: ${candidate.status}
+        - CV: ${candidate.cvUrl || 'Không có'}
+      `);
+    } catch (error) {
+      console.error('Error fetching candidate details:', error);
+      alert('Có lỗi khi lấy thông tin chi tiết ứng viên: ' + (error as Error).message);
     }
   };
 
@@ -132,10 +164,6 @@ const Candidate = () => {
       console.error('Error downloading CV:', error);
       alert('Không thể tải CV: ' + (error as Error).message);
     }
-  };
-
-  const sendEmail = (email: string) => {
-    window.open(`mailto:${email}`, '_blank');
   };
 
   if (loading) {
@@ -160,17 +188,15 @@ const Candidate = () => {
       <div className="container mx-auto px-4 pt-20 pb-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Quản lý ứng viên</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Danh sách ứng viên</h1>
             <p className="text-gray-600">{jobTitle}</p>
           </div>
-          {jobPostingId && (
-            <Link
-              to="/admin/candidates"
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-            >
-              Xem tất cả ứng viên
-            </Link>
-          )}
+          <Link
+            to="/admin/candidates"
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+          >
+            Xem tất cả ứng viên
+          </Link>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -190,15 +216,15 @@ const Candidate = () => {
             <div className="flex items-center">
               <FaFilter className="text-gray-500 mr-2" />
               <select
+                className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="all">Tất cả trạng thái</option>
                 <option value={ApplicationStatus.PENDING}>Chờ xử lý</option>
                 <option value={ApplicationStatus.REVIEWED}>Đã xem</option>
-                <option value={ApplicationStatus.ACCEPTED}>Chấp nhận</option>
-                <option value={ApplicationStatus.REJECTED}>Từ chối</option>
+                <option value={ApplicationStatus.ACCEPTED}>Đã chấp nhận</option>
+                <option value={ApplicationStatus.REJECTED}>Đã từ chối</option>
               </select>
             </div>
           </div>
@@ -209,7 +235,6 @@ const Candidate = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên ứng viên</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thông tin liên hệ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vị trí ứng tuyển</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày ứng tuyển</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CV</th>
@@ -231,18 +256,6 @@ const Candidate = () => {
                           <FaPhone className="mr-2" /> {candidate.phone}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {candidate.jobPostingId ? (
-                          <Link
-                            to={`/admin/recruitment/${candidate.jobPostingId}`}
-                            className="text-sm text-blue-600 hover:underline"
-                          >
-                            {candidate.jobTitle || 'Không có tiêu đề'}
-                          </Link>
-                        ) : (
-                          <span className="text-sm text-gray-500">{candidate.jobTitle || 'Không có tiêu đề'}</span>
-                        )}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(candidate.applicationDate)}
                       </td>
@@ -256,7 +269,7 @@ const Candidate = () => {
                             className="text-blue-600 hover:text-blue-800 flex items-center"
                             title="Tải xuống CV"
                           >
-                            <FaFileDownload className="mr-1" /> Tải CV
+                            <FaFileDownload className="mr-1" /> Tải xuống
                           </button>
                         ) : (
                           <span className="text-gray-400">Không có CV</span>
@@ -268,7 +281,6 @@ const Candidate = () => {
                             value={candidate.status}
                             onChange={(e) => handleStatusChange(candidate.applicationId, e.target.value as ApplicationStatus)}
                             className="border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                            disabled={!jobPostingId}
                           >
                             <option value={ApplicationStatus.PENDING}>Chờ xử lý</option>
                             <option value={ApplicationStatus.REVIEWED}>Đã xem</option>
@@ -282,6 +294,12 @@ const Candidate = () => {
                             >
                               <FaEnvelope className="mr-1" /> Email
                             </button>
+                            <button
+                              onClick={() => viewCandidateDetails(candidate.applicationId)}
+                              className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200 flex items-center"
+                            >
+                              <FaEye className="mr-1" /> Chi tiết
+                            </button>
                           </div>
                         </div>
                       </td>
@@ -289,7 +307,7 @@ const Candidate = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                       Không tìm thấy ứng viên nào
                     </td>
                   </tr>
@@ -303,4 +321,4 @@ const Candidate = () => {
   );
 };
 
-export default Candidate;
+export default RecruitmentDetailJob;

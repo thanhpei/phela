@@ -28,17 +28,8 @@
         {
           "id":3,
           "title": "Tin tức",
-          "link": "tin-tuc",
-          "subMenu": [
-            {
-              "title": "Ưu đãi",
-              "link": "/uu-dai"
-            },
-            {
-              "title": "Sự kiện",
-              "link": "/su-kien"
-            }
-          ]
+          "link": "/tin-tuc",
+          "subMenu": []
         },
         {
           "id":4,
@@ -49,11 +40,8 @@
         {
           "id":5,
           "title": "Tuyển dụng",
-          "link": "/#",
-          "subMenu": [
-            { "title": "Khối văn phòng", "link": "/khoi-van-phong" },
-            { "title": "Khối cửa hàng", "link": "/khoi-cua-hang" }
-          ]
+          "link": "/tuyen-dung",
+          "subMenu": []
         },
         {
           "id":6,

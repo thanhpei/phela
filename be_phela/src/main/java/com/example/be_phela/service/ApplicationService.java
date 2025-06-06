@@ -1,5 +1,7 @@
 package com.example.be_phela.service;
 
+import com.example.be_phela.dto.request.ApplicationRequestDTO;
+import com.example.be_phela.dto.response.ApplicationResponseDTO;
 import com.example.be_phela.interService.IApplicationService;
 import com.example.be_phela.model.Application;
 import com.example.be_phela.model.JobPosting;
@@ -12,8 +14,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,37 +26,90 @@ public class ApplicationService implements IApplicationService {
 
     JobPostingRepository jobPostingRepository;
     ApplicationRepository applicationRepository;
+    CVStorageService cvStorageService;
 
     @Override
     @Transactional
-    public Application applyForJob(String jobPostingId, Application application) {
-        // Tìm JobPosting
+    public ApplicationResponseDTO applyForJob(String jobPostingId, ApplicationRequestDTO requestDTO, MultipartFile cvFile) {
         JobPosting jobPosting = jobPostingRepository.findById(jobPostingId)
-                .orElseThrow(() -> new RuntimeException("Job posting not found with id: " + jobPostingId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy job posting với id: " + jobPostingId));
 
-        // Kiểm tra JobPosting có đang hoạt động không
         if (jobPosting.getStatus() != JobStatus.OPEN) {
-            throw new RuntimeException("Job posting is not active");
+            throw new RuntimeException("Job posting này không còn hoạt động");
         }
 
-        // Kiểm tra deadline
-        if (jobPosting.getDeadline().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Application deadline has passed");
-        }
+        boolean alreadyApplied = applicationRepository.existsByEmailAndJobPosting_JobPostingId(
+                requestDTO.getEmail(), jobPostingId);
 
-        // Kiểm tra xem ứng viên đã nộp đơn chưa (dựa trên email)
-        boolean alreadyApplied = jobPosting.getApplications().stream()
-                .anyMatch(app -> app.getEmail().equals(application.getEmail()));
         if (alreadyApplied) {
-            throw new RuntimeException("You have already applied for this job");
+            throw new RuntimeException("Bạn đã nộp đơn ứng tuyển cho vị trí này rồi");
         }
 
-        // Thiết lập giá trị mặc định
-        application.setJobPosting(jobPosting);
-        application.setStatus(ApplicationStatus.PENDING);
-        application.setApplicationDate(LocalDateTime.now()); // @CreationTimestamp sẽ tự động cập nhật
+        String cvUrl;
+        try {
+            cvUrl = cvStorageService.storeCVFile(cvFile);
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể lưu file CV: " + e.getMessage(), e);
+        }
 
-        // Lưu Application
-        return applicationRepository.save(application);
+        Application application = Application.builder()
+                .fullName(requestDTO.getFullName())
+                .email(requestDTO.getEmail())
+                .phone(requestDTO.getPhone())
+                .cvUrl(cvUrl)
+                .jobPosting(jobPosting)
+                .status(ApplicationStatus.PENDING)
+                .build();
+
+        Application savedApplication = applicationRepository.save(application);
+
+        return ApplicationResponseDTO.builder()
+                .applicationId(savedApplication.getApplicationId())
+                .fullName(savedApplication.getFullName())
+                .email(savedApplication.getEmail())
+                .phone(savedApplication.getPhone())
+                .cvUrl(savedApplication.getCvUrl())
+                .jobPostingId(jobPostingId)
+                .jobTitle(jobPosting.getTitle())
+                .status(savedApplication.getStatus())
+                .applicationDate(savedApplication.getApplicationDate())
+                .updatedAt(savedApplication.getUpdatedAt())
+                .build();
+    }
+
+    private ApplicationResponseDTO convertToResponseDTO(Application application) {
+        return ApplicationResponseDTO.builder()
+                .applicationId(application.getApplicationId())
+                .fullName(application.getFullName())
+                .email(application.getEmail())
+                .phone(application.getPhone())
+                .cvUrl(application.getCvUrl())
+                .jobPostingId(application.getJobPosting().getJobPostingId())
+                .jobTitle(application.getJobPosting().getTitle())
+                .status(application.getStatus())
+                .applicationDate(application.getApplicationDate())
+                .updatedAt(application.getUpdatedAt())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApplicationResponseDTO> getApplicationsByJobPostingId(String jobPostingId) {
+        if (!jobPostingRepository.existsById(jobPostingId)) {
+            throw new RuntimeException("Không tìm thấy job posting với id: " + jobPostingId);
+        }
+
+        List<Application> applications = applicationRepository.findByJobPosting_JobPostingId(jobPostingId);
+        return applications.stream()
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Thêm phương thức lấy tất cả ứng viên
+    @Transactional(readOnly = true)
+    public List<ApplicationResponseDTO> getAllApplications() {
+        List<Application> applications = applicationRepository.findAll();
+        return applications.stream()
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
     }
 }

@@ -9,3 +9,7 @@
 .bg-primary:hover {
   background-color: #b38b59; /* Màu khi hover */
 }
+
+.border-primary {
+  border-color: #d4a373; /* Màu viền primary từ giao diện */
+}

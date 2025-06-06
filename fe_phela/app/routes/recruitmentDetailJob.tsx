@@ -1,5 +1,5 @@
-import type { Route } from "./+types/recruitmentDetail";
-import RecruitmentDetail from "~/pages/customer/recruitment/RecruitmentDetail";
+import type { Route } from "./+types/recruitmentDetailJob";
+import RecruitmentDetailJob from "~/pages/admin/recruitment/RecruitmentDetailJob";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +9,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function HomePage() {
-  return <RecruitmentDetail />;
+  return <RecruitmentDetailJob />;
 }

@@ -11,6 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -56,9 +57,10 @@ public class JobPosting {
     @Column(name = "posting_date", nullable = false, updatable = false)
     private LocalDateTime postingDate;
 
+
     @NotNull(message = "Deadline is required")
     @Column(name = "deadline", nullable = false)
-    private LocalDateTime deadline;
+    private LocalDate deadline;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
