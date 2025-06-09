@@ -1,4 +1,4 @@
-import type { Route } from "./+types/newsManage";
+import type { Route } from "./+types/newsManager";
 import NewsManager from "~/pages/admin/anotherManager/NewsManager";
 
 export function meta({}: Route.MetaArgs) {

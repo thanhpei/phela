@@ -2,26 +2,29 @@ package com.example.be_phela.service;
 
 import com.example.be_phela.dto.request.OrderCreateDTO;
 import com.example.be_phela.dto.request.OrderItemDTO;
-import com.example.be_phela.dto.response.AddressDTO;
-import com.example.be_phela.dto.response.BranchResponseDTO;
-import com.example.be_phela.dto.response.OrderResponseDTO;
-import com.example.be_phela.dto.response.PromotionResponseDTO;
+import com.example.be_phela.dto.response.*;
 import com.example.be_phela.interService.IOrderService;
+import com.example.be_phela.mapper.CustomerMapper;
 import com.example.be_phela.model.*;
-import com.example.be_phela.model.enums.OrderStatus;
-import com.example.be_phela.model.enums.PaymentMethod;
-import com.example.be_phela.model.enums.PaymentStatus;
-import com.example.be_phela.model.enums.PromotionStatus;
+import com.example.be_phela.model.enums.*;
 import com.example.be_phela.repository.*;
 import com.example.be_phela.service.CartService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Date;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,9 +37,10 @@ public class OrderService implements IOrderService {
     CustomerRepository customerRepository;
     CartRepository cartRepository;
     BranchRepository branchRepository;
-    PromotionRepository promotionRepository;
     CartService cartService;
     AddressRepository addressRepository;
+    CustomerMapper customerMapper;
+    AdminRepository adminRepository;
 
     private String generateOrderCode() {
         long count = orderRepository.count();
@@ -46,93 +50,63 @@ public class OrderService implements IOrderService {
     @Override
     @Transactional
     public OrderResponseDTO createOrderFromCart(OrderCreateDTO orderCreateDTO) {
-        // Kiểm tra giỏ hàng
         Cart cart = cartRepository.findById(orderCreateDTO.getCartId())
                 .orElseThrow(() -> new RuntimeException("Cart not found with id: " + orderCreateDTO.getCartId()));
 
-        // Kiểm tra địa chỉ
-        Address address = addressRepository.findById(orderCreateDTO.getAddressId())
-                .orElseThrow(() -> new RuntimeException("Address not found with id: " + orderCreateDTO.getAddressId()));
-        if (!address.getCustomer().getCustomerId().equals(cart.getCustomer().getCustomerId())) {
-            throw new RuntimeException("Address does not belong to this customer");
+        if (cart.getCartItems().isEmpty()) {
+            throw new RuntimeException("Cannot create order from an empty cart.");
         }
 
-        // Kiểm tra chi nhánh
+        Address address = addressRepository.findById(orderCreateDTO.getAddressId())
+                .orElseThrow(() -> new RuntimeException("Address not found with id: " + orderCreateDTO.getAddressId()));
+
         Branch branch = branchRepository.findById(orderCreateDTO.getBranchCode())
                 .orElseThrow(() -> new RuntimeException("Branch not found with code: " + orderCreateDTO.getBranchCode()));
 
-        // Lấy thông tin giỏ hàng
-        double totalAmount = cartService.calculateCartTotalFromItems(cart);
-        double shippingFee = cartService.calculateShippingFee(cart.getCartId());
-        double discount = cart.getPromotionCarts().stream()
-                .mapToDouble(PromotionCart::getDiscountAmount)
-                .sum();
-        double finalAmount = totalAmount + shippingFee - discount;
-
-        // Xử lý khuyến mãi nếu có
-        Promotion promotion = null;
-        if (orderCreateDTO.getPromotionCode() != null) {
-            promotion = promotionRepository.findByPromotionCode(orderCreateDTO.getPromotionCode())
-                    .orElseThrow(() -> new RuntimeException("Promotion not found with code: " + orderCreateDTO.getPromotionCode()));
-            if (promotion.getStatus() != PromotionStatus.ACTIVE ||
-                    LocalDateTime.now().isBefore(promotion.getStartDate()) ||
-                    LocalDateTime.now().isAfter(promotion.getEndDate())) {
-                throw new RuntimeException("Promotion is not valid or expired");
-            }
+        if (!address.getCustomer().getCustomerId().equals(cart.getCustomer().getCustomerId())) {
+            throw new RuntimeException("This address does not belong to the customer.");
         }
 
-        // Tạo đơn hàng nhưng chưa có orderItems và promotionOrders
+        double totalAmount = cartService.calculateCartTotalFromItems(cart);
+        double shippingFee = cartService.calculateShippingFee(cart.getCartId());
+
+        double totalDiscountFromPromos = cart.getPromotionCarts().stream()
+                .mapToDouble(PromotionCart::getDiscountAmount)
+                .sum();
+
+        double finalAmount = totalAmount + shippingFee - totalDiscountFromPromos;
+
         Order order = Order.builder()
-                .orderId(UUID.randomUUID().toString())
                 .orderCode(generateOrderCode())
                 .totalAmount(totalAmount)
                 .customer(cart.getCustomer())
                 .address(address)
                 .branch(branch)
                 .status(OrderStatus.PENDING)
-                .orderDate(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .shippingFee(shippingFee)
+                .totalDiscount(totalDiscountFromPromos)
                 .finalAmount(finalAmount)
                 .paymentMethod(orderCreateDTO.getPaymentMethod())
-                .paymentStatus(PaymentStatus.PENDING)
+                .paymentStatus(orderCreateDTO.getPaymentMethod() == PaymentMethod.COD
+                        ? PaymentStatus.PENDING
+                        : PaymentStatus.AWAITING_PAYMENT)
                 .build();
 
-        // Lưu order trước để có ID
-        Order savedOrder = orderRepository.save(order);
-
-        // Tạo danh sách OrderItem từ CartItem
-        final Order finalOrder = savedOrder; // Biến final để sử dụng trong lambda
         List<OrderItem> orderItems = cart.getCartItems().stream()
                 .map(cartItem -> OrderItem.builder()
-                        .orders(finalOrder)
+                        .order(order)
                         .product(cartItem.getProduct())
                         .quantity(cartItem.getQuantity())
                         .amount(cartItem.getAmount())
                         .note(cartItem.getNote())
                         .build())
                 .collect(Collectors.toList());
+        order.setOrderItems(orderItems);
 
-        // Gán danh sách OrderItem vào savedOrder
-        savedOrder.setOrderItems(orderItems);
+        Order savedOrder = orderRepository.save(order);
 
-        // Tạo danh sách PromotionOrder nếu có khuyến mãi
-        if (promotion != null) {
-            PromotionOrder promotionOrder = PromotionOrder.builder()
-                    .order(savedOrder)
-                    .promotion(promotion)
-                    .discountAmount(discount)
-                    .build();
-            savedOrder.setPromotionOrders(List.of(promotionOrder));
-        }
-
-        // Lưu lại sau khi cập nhật orderItems và promotionOrders
-        orderRepository.save(savedOrder);
-
-        // Xóa giỏ hàng sau khi tạo đơn hàng thành công
         cartService.clearCartItems(cart.getCartId());
 
-        // Chuyển đổi sang DTO
         return convertToResponseDTO(savedOrder);
     }
 
@@ -189,18 +163,43 @@ public class OrderService implements IOrderService {
 
     @Override
     @Transactional
-    public void updateOrderStatus(String orderId, OrderStatus status) {
+    public void updateOrderStatus(String orderId, OrderStatus newStatus, String username) {
+
+        Admin currentAdmin = adminRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Admin user '" + username + "' not found"));
+
+        Roles currentUserRole = currentAdmin.getRole();
+
+        boolean isAllowed = switch (currentUserRole) {
+            case SUPER_ADMIN, ADMIN ->
+                    List.of(OrderStatus.CONFIRMED, OrderStatus.DELIVERING, OrderStatus.DELIVERED, OrderStatus.CANCELLED).contains(newStatus);
+            case STAFF ->
+                    List.of(OrderStatus.CONFIRMED, OrderStatus.DELIVERING).contains(newStatus);
+            case DELIVERY_STAFF ->
+                    newStatus == OrderStatus.DELIVERED;
+            default -> false;
+        };
+
+        if (!isAllowed) {
+            throw new AccessDeniedException("User " + username + " does not have permission to change the order to status: " + newStatus);
+        }
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
-        if (status == OrderStatus.PENDING || status == order.getStatus()) {
-            throw new RuntimeException("Invalid status transition");
-        }
-        order.setStatus(status);
-        order.setUpdatedAt(LocalDateTime.now());
 
-        // Cập nhật thời gian giao hàng nếu đơn hàng đã giao
-        if (status == OrderStatus.DELIVERED) {
+        if (order.getStatus() == newStatus) {
+            throw new RuntimeException("Order is already in this status.");
+        }
+        if (order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new RuntimeException("Cannot change status of a completed or cancelled order.");
+        }
+
+        order.setStatus(newStatus);
+        if (newStatus == OrderStatus.DELIVERED) {
             order.setDeliveryDate(LocalDateTime.now());
+            if (order.getPaymentMethod() == PaymentMethod.COD) {
+                order.setPaymentStatus(PaymentStatus.COMPLETED);
+            }
         }
         orderRepository.save(order);
     }
@@ -250,6 +249,7 @@ public class OrderService implements IOrderService {
                 .updatedAt(order.getUpdatedAt())
                 .deliveryDate(order.getDeliveryDate())
                 .shippingFee(order.getShippingFee())
+                .totalDiscount(order.getTotalDiscount())
                 .finalAmount(order.getFinalAmount())
                 .paymentMethod(order.getPaymentMethod())
                 .paymentStatus(order.getPaymentStatus())
@@ -262,14 +262,70 @@ public class OrderService implements IOrderService {
                                 .note(item.getNote())
                                 .build())
                         .collect(Collectors.toList()))
-                .promotionOrders(order.getPromotionOrders().stream()
-                        .map(po -> PromotionResponseDTO.builder()
-                                .promotionId(po.getPromotion().getPromotionId())
-                                .promotionCode(po.getPromotion().getPromotionCode())
-                                .discountAmount(po.getDiscountAmount())
-                                .description(po.getPromotion().getDescription())
-                                .build())
-                        .collect(Collectors.toList()))
                 .build();
     }
+
+    @Override
+    public Optional<Order> getOrderByCode(String orderCode) {
+        return orderRepository.findByOrderCode(orderCode);
+    }
+
+    // Lấy danh sách hóa đơn theo trạng thái
+    @Override
+    public List<OrderResponseDTO> getOrdersByStatus(OrderStatus status) {
+        List<Order> orders = orderRepository.findByStatus(status);
+        return orders.stream()
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    //Lấy thông tin khách hàng từ ID đơn hàng
+    @Override
+    public CustomerResponseDTO getCustomerByOrderId(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        Customer customer = order.getCustomer();
+        // Giả sử bạn có một hàm convertToResponseDTO trong CustomerService hoặc tự map ở đây
+        return customerMapper.toCustomerResponseDTO(customer);
+    }
+
+//    @Override
+//    @Transactional(readOnly = true)
+//    public RevenueReportDTO getRevenueAndOrderReport(String period) {
+//        LocalDateTime now = LocalDateTime.now();
+//        LocalDateTime startDate = calculateStartDate(period);
+//
+//        List<Object[]> results = orderRepository.findRevenueAndOrderCountByDateRange(startDate, now, OrderStatus.DELIVERED);
+//
+//        List<RevenueReportDTO.DailyData> dailyData = results.stream()
+//                .map(r -> RevenueReportDTO.DailyData.builder()
+//                        .date(((Date) r[0]).toLocalDate().toString())
+//                        .revenue(r[1] != null ? ((Number) r[1]).doubleValue() : 0.0)
+//                        .orderCount(r[2] != null ? ((Number) r[2]).longValue() : 0L)
+//                        .build())
+//                .collect(Collectors.toList());
+//
+//        double totalRevenue = dailyData.stream().mapToDouble(RevenueReportDTO.DailyData::getRevenue).sum();
+//        long totalOrders = dailyData.stream().mapToLong(RevenueReportDTO.DailyData::getOrderCount).sum();
+//
+//        return RevenueReportDTO.builder()
+//                .totalRevenue(totalRevenue)
+//                .totalOrders(totalOrders)
+//                .dailyData(dailyData)
+//                .build();
+//    }
+
+//    private LocalDateTime calculateStartDate(String period) {
+//        LocalDateTime now = LocalDateTime.now();
+//        switch (period.toLowerCase()) {
+//            case "week": return now.with(DayOfWeek.MONDAY).with(LocalTime.MIN);
+//            case "month": return now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN);
+//            case "quarter":
+//                int firstMonthOfQuarter = ((now.getMonthValue() - 1) / 3) * 3 + 1;
+//                return LocalDateTime.of(now.getYear(), firstMonthOfQuarter, 1, 0, 0);
+//            case "year": return now.with(TemporalAdjusters.firstDayOfYear()).with(LocalTime.MIN);
+//            default: return now.with(LocalTime.MIN);
+//        }
+//    }
+
 }

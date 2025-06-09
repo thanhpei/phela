@@ -23,10 +23,6 @@
             {
               "title": "Đơn hàng",
               "link": "/admin/don-hang"
-            },
-            {
-              "title": "Đơn hủy",
-              "link": "/admin/don-huy"
             }
           ]
         },

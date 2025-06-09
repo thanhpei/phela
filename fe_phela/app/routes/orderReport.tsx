@@ -1,4 +1,4 @@
-import type { Route } from "./+types/saleReport";
+import type { Route } from "./+types/OrderReport";
 import OrderReport from "~/pages/admin/report/OrderReport";
 
 export function meta({}: Route.MetaArgs) {

@@ -35,6 +35,9 @@ public class Order {
     @Column(name = "total_amount", nullable = false)
     private Double totalAmount;
 
+    @Column(name = "total_discount")
+    private Double totalDiscount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
@@ -84,12 +87,8 @@ public class Order {
     @Column(name = "payment_status", nullable = false)
     private PaymentStatus paymentStatus;
 
-    @OneToMany(mappedBy = "orders", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<OrderItem> orderItems;
-
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<PromotionOrder> promotionOrders;
-
+    private List<OrderItem> orderItems;
 
 }
 

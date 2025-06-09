@@ -85,10 +85,10 @@ public class CartController {
         }
     }
 
-    @PostMapping("/{cartId}/remove-promotion")
+    @DeleteMapping("/{cartId}/promotions/{promotionId}")
     public ResponseEntity<CartResponseDTO> removePromotionFromCart(
             @PathVariable String cartId,
-            @RequestParam String promotionId) {
+            @PathVariable String promotionId) {
         cartService.removePromotionFromCart(cartId, promotionId);
         return ResponseEntity.ok(cartService.getCartByCartId(cartId));
     }

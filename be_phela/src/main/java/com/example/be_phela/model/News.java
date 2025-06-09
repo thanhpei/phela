@@ -22,9 +22,9 @@ public class News {
     private String newsId;
     @Column(name = "title")
     private String title;
-    @Column(name = "summary")
+    @Column(name = "summary", columnDefinition = "TEXT")
     private String summary;
-    @Column(name = "content")
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
     @Column(name = "thumbnailUrl")
     private String thumbnailUrl;

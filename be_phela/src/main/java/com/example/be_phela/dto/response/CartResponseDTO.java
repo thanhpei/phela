@@ -23,6 +23,7 @@ public class CartResponseDTO {
     LocalDateTime updatedAt;
     List<CartItemDTO> cartItems;
     List<PromotionResponseDTO> promotionCarts;
+    Double distance;
     Double totalAmount;
     Double shippingFee;
     Double finalAmount;

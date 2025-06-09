@@ -80,7 +80,4 @@ public class Promotion {
     @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PromotionCart> promotionCarts;
 
-    @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<PromotionOrder> promotionOrders;
-
 }

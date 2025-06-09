@@ -17,7 +17,6 @@ public class OrderCreateDTO {
     String addressId;
     String branchCode;
     PaymentMethod paymentMethod;
-    String promotionCode;
     String cartId;
 
 }

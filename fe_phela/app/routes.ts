@@ -9,14 +9,15 @@ const customerRoutes: RouteConfig = [
     route("san-pham/:productId", "routes/productDetail.tsx"),
     route("cart", "routes/cart.tsx"),
     route("payment", "routes/payment.tsx"),
+    route("payment-return", "routes/paymentReturn.tsx"),
 
     // Câu chuyện thương hiệu
     route("ve-chung-toi", "routes/aboutUs.tsx"),
     route("phong-cach-khac-biet-tai-phe-la", "routes/differentStyle.tsx"),
-    route("category/tran-chau-o-long", "routes/olongPearl.tsx"),
 
     // Tin tức
     route("tin-tuc", "routes/news.tsx"),
+    route("tin-tuc/:newsId", "routes/newDetail.tsx"),
 
     // Cửa hàng
     route("he-thong-cua-hang", "routes/storePage.tsx"),
@@ -39,6 +40,7 @@ const customerRoutes: RouteConfig = [
     route("profileCustomer", "routes/ProfileCustomer.tsx"),
     route("my-address", "routes/deliveryAddress.tsx"),
     route("my-orders", "routes/myOrders.tsx"),
+    route("my-orders/:orderId", "routes/orderDetail.tsx"),
 ];
 
 const adminRoutes: RouteConfig = [
@@ -47,8 +49,8 @@ const adminRoutes: RouteConfig = [
       route("san-pham", "routes/productManage.tsx"),
       route("danh-muc", "routes/category.tsx"),
       route("don-hang", "routes/orderManage.tsx"),
-      route("don-huy", "routes/orderCancel.tsx"),
-      route("bao-cao-don-hang", "routes/OrderReport.tsx"),
+      route("don-hang/:orderId", "routes/orderDetailReport.tsx"),
+      route("bao-cao-don-hang", "routes/orderReport.tsx"),
       route("doanh-thu", "routes/Revenue.tsx"),
       route("chuong-trinh-khuyen-mai", "routes/promotions.tsx"),
       route("qua-tang", "routes/present.tsx"),
@@ -61,6 +63,7 @@ const adminRoutes: RouteConfig = [
       route("ung-vien", "routes/candidate.tsx"),
       route("banner", "routes/bannerManager.tsx"),
       route("tin-tuc-admin", "routes/newsManager.tsx"),
+      route("tin-tuc-admin/:newsId", "routes/newsDetailManager.tsx"),
 ];
 
 

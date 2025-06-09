@@ -29,9 +29,9 @@ public class OrderResponseDTO {
     LocalDateTime updatedAt;
     LocalDateTime deliveryDate;
     Double shippingFee;
+    Double totalDiscount;
     Double finalAmount;
     PaymentMethod paymentMethod;
     PaymentStatus paymentStatus;
     List<OrderItemDTO> orderItems;
-    List<PromotionResponseDTO> promotionOrders;
 }

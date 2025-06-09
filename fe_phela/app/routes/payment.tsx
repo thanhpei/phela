@@ -1,5 +1,5 @@
 import type { Route } from "./+types/payment";
-import Payment from "~/pages/customer/product/Payment";
+import Payment from "~/pages/customer/order/Payment";
 
 export function meta({}: Route.MetaArgs) {
   return [

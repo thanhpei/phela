@@ -1,6 +1,7 @@
 package com.example.be_phela.controller;
 
 import com.example.be_phela.dto.request.OrderCreateDTO;
+import com.example.be_phela.dto.response.CustomerResponseDTO;
 import com.example.be_phela.dto.response.OrderResponseDTO;
 import com.example.be_phela.model.enums.OrderStatus;
 import com.example.be_phela.service.OrderService;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,8 +47,8 @@ public class OrderController {
     }
 
     @PatchMapping("/{orderId}/status")
-    public ResponseEntity<Void> updateOrderStatus(@PathVariable String orderId, @RequestParam OrderStatus status) {
-        orderService.updateOrderStatus(orderId, status);
+    public ResponseEntity<Void> updateOrderStatus(@PathVariable String orderId, @RequestParam("status") OrderStatus status, @RequestParam String username) {
+        orderService.updateOrderStatus(orderId, status, username);
         return ResponseEntity.ok().build();
     }
 
@@ -54,5 +56,20 @@ public class OrderController {
     public ResponseEntity<List<OrderResponseDTO>> getOrdersByCustomerId(@PathVariable String customerId) {
         List<OrderResponseDTO> orders = orderService.getOrdersByCustomerId(customerId);
         return ResponseEntity.ok(orders);
+    }
+
+    // Lấy đơn hàng theo trạng thái
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<OrderResponseDTO>> getOrdersByStatus(@PathVariable OrderStatus status) {
+        List<OrderResponseDTO> orders = orderService.getOrdersByStatus(status);
+        return ResponseEntity.ok(orders);
+    }
+
+    // Lấy thông tin khách hàng từ ID đơn hàng
+    @GetMapping("/{orderId}/customer")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STAFF')")
+    public ResponseEntity<CustomerResponseDTO> getCustomerByOrderId(@PathVariable String orderId) {
+        CustomerResponseDTO customer = orderService.getCustomerByOrderId(orderId);
+        return ResponseEntity.ok(customer);
     }
 }

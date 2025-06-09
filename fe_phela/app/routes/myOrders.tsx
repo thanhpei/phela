@@ -1,5 +1,5 @@
 import type { Route } from "./+types/myOrders";
-import MyOrders from "~/pages/customer/account/MyOrders";
+import MyOrders from "~/pages/customer/order/MyOrders";
 
 export function meta({}: Route.MetaArgs) {
   return [

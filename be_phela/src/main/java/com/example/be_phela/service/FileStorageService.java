@@ -16,20 +16,29 @@ public class FileStorageService {
     private Cloudinary cloudinary;
 
     public String storeFile(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new IOException("File is null or empty");
-        }
-
-        // Upload file lên Cloudinary
-        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
-                "upload_preset", "phe_la",
-                "folder", "products"
-        ));
-
-        // Lấy URL của ảnh từ Cloudinary
-        String imageUrl = (String) uploadResult.get("secure_url");
-        return imageUrl;
+        return uploadToCloudinary(file, "products");
     }
 
+    public String storeNewsThumbnail(MultipartFile file) throws IOException {
+        return uploadToCloudinary(file, "news");
+    }
+
+    public String storeBannerImage(MultipartFile file) throws IOException {
+        return uploadToCloudinary(file, "banners");
+    }
+
+    private String uploadToCloudinary(MultipartFile file, String folderName) throws IOException {
+        if (file == null || file.isEmpty()) {
+
+            return null;
+        }
+
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                "upload_preset", "phe_la",
+                "folder", folderName
+        ));
+
+        return (String) uploadResult.get("secure_url");
+    }
 
 }

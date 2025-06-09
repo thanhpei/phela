@@ -1,47 +1,42 @@
 package com.example.be_phela.config;
 
-import lombok.Getter;
-import lombok.Value;
-import org.springframework.context.annotation.Configuration;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
 
-import java.util.HashMap;
-import java.util.Map;
-
-@Configuration
 public class VNPayConfig {
-//    @Getter
-//    @Value("${payment.vnPay.url}")
-//    private String vnp_PayUrl;
-//
-//    @Value("${payment.vnPay.returnUrl}")
-//    private String vnp_ReturnUrl;
-//
-//    @Value("${payment.vnPay.tmnCode}")
-//    private String vnp_TmnCode ;
-//
-//    @Getter
-//    @Value("${payment.vnPay.secretKey}")
-//    private String secretKey;
-//
-//    @Value("${payment.vnPay.version}")
-//    private String vnp_Version;
-//
-//    @Value("${payment.vnPay.command}")
-//    private String vnp_Command;
-//
-//    @Value("${payment.vnPay.orderType}")
-//    private String orderType;
+    public static String hmacSHA512(final String key, final String data) {
+        try {
+            if (key == null || data == null) {
+                throw new NullPointerException();
+            }
+            final Mac hmac512 = Mac.getInstance("HmacSHA512");
+            byte[] hmacKeyBytes = key.getBytes();
+            final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
+            hmac512.init(secretKey);
+            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+            byte[] result = hmac512.doFinal(dataBytes);
+            StringBuilder sb = new StringBuilder(2 * result.length);
+            for (byte b : result) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
 
-//    public Map<String, String> getConfig() {
-//        Map<String, String> vnpParamsMap = new HashMap<>();
-//        vnpParamsMap.put("vnp_Version", this.vnp_Version);
-//        vnpParamsMap.put("vnp_Command", this.vnp_Command);
-//        vnpParamsMap.put("vnp_TmnCode", this.vnp_TmnCode);
-//        vnpParamsMap.put("vnp_CurrCode", "VND");
-//        vnpParamsMap.put("vnp_OrderType", this.orderType);
-//        vnpParamsMap.put("vnp_Locale", "vn");
-//        vnpParamsMap.put("vnp_ReturnUrl", this.vnp_ReturnUrl);
-//        return vnpParamsMap;
-//    }
-
+    public static String getIpAddress(HttpServletRequest request) {
+        String ipAdress;
+        try {
+            ipAdress = request.getHeader("X-FORWARDED-FOR");
+            if (ipAdress == null) {
+                ipAdress = request.getRemoteAddr();
+            }
+        } catch (Exception e) {
+            ipAdress = "Invalid IP:" + e.getMessage();
+        }
+        return ipAdress;
+    }
 }
