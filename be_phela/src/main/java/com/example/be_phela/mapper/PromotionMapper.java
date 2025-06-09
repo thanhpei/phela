@@ -15,7 +15,6 @@ public interface PromotionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "promotionCarts", ignore = true)
-    @Mapping(target = "promotionOrders", ignore = true)
     Promotion toPromotion(PromotionCreateDTO createDTO);
 
     PromotionResponseDTO toResponseDTO(Promotion promotion);
@@ -24,6 +23,5 @@ public interface PromotionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "promotionCarts", ignore = true)
-    @Mapping(target = "promotionOrders", ignore = true)
     void updatePromotionFromDTO(PromotionCreateDTO createDTO, @MappingTarget Promotion promotion);
 }

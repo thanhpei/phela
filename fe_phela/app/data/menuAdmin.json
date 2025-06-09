@@ -95,6 +95,12 @@
               "link": "/admin/banner"
             }
           ]
+        },
+         {
+          "id":9,
+          "title": "Hỗ trợ",
+          "link": "/admin/support",
+          "subMenu": []
         }
       ]
   }

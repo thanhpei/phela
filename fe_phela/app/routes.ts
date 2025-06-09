@@ -64,6 +64,7 @@ const adminRoutes: RouteConfig = [
       route("banner", "routes/bannerManager.tsx"),
       route("tin-tuc-admin", "routes/newsManager.tsx"),
       route("tin-tuc-admin/:newsId", "routes/newsDetailManager.tsx"),
+      route("support", "routes/support.tsx"),
 ];
 
 

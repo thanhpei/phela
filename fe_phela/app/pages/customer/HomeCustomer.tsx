@@ -6,6 +6,8 @@ import Header from '~/components/customer/Header'
 import Footer from '~/components/customer/Footer'
 import home from '~/assets/images/home.jpg';
 import '~/assets/css/DeliveryAddress.css';
+import ChatWidget from '~/components/customer/ChatWidget';
+
 
 interface Banner {
     bannerId: string;
@@ -51,7 +53,7 @@ const Home = () => {
     return (
         <div>
             <Header />
-
+            <ChatWidget />
             {/* Phần Banner */}
             <div className="relative w-full h-screen bg-black">
                 {loading ? (

@@ -67,9 +67,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.error('Failed to refresh user data:', error);
           setUser(parsedUser);
+        } finally
+        {
+          setLoading(false);
         }
       }
-      setLoading(false);
     };
 
     initializeAuth();

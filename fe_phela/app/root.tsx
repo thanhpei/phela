@@ -13,6 +13,7 @@ import { useAuth, AuthProvider } from "./AuthContext";
 import { useEffect } from 'react';
 
 
+
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -45,6 +46,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   );
+}
+
+if (typeof window !== 'undefined' && !window.global) {
+  window.global = window;
 }
 
 const role = import.meta.env.VITE_ROLE;
