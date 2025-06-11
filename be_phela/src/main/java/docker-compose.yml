@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  mysqldb:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=your_root_password
+      - MYSQL_DATABASE=phela_db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=123456
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  be_phela_app:
+    build: . # Build image từ Dockerfile trong thư mục hiện tại
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysqldb
+    environment:
+      # Cấu hình để Spring Boot kết nối tới Dockerized MySQL
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysqldb:3306/phela_db?useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+
+volumes:
+  db_data:
