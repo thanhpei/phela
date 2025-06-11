@@ -8,7 +8,9 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "dev:admin": "vite --mode admin --port 3000",
-    "dev:customer": "vite --mode customer --port 3001"
+    "dev:customer": "vite --mode customer --port 3001",
+    "build:customer": "vite build --mode customer",
+    "build:admin": "vite build --mode admin"
   },
   "dependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
