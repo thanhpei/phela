@@ -37,7 +37,7 @@ const customerRoutes: RouteConfig = [
 
     //Tài khoản
     route("login-register", "routes/loginRegisterCus.tsx"),
-    route("profileCustomer", "routes/ProfileCustomer.tsx"),
+    route("profileCustomer", "routes/profileCustomer.tsx"),
     route("my-address", "routes/deliveryAddress.tsx"),
     route("my-orders", "routes/myOrders.tsx"),
     route("my-orders/:orderId", "routes/orderDetail.tsx"),
