@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
-//@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')") // Chỉ ADMIN và SUPER_ADMIN mới được truy cập
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')") // Chỉ ADMIN và SUPER_ADMIN mới được truy cập
 public class DashboardController {
 
     private final DashboardService dashboardService;

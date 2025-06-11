@@ -14,19 +14,22 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, String> {
 
-    List<Order> findByCustomer_CustomerId(String customerId);
+    List<Order> findByCustomer_CustomerIdOrderByOrderDateDesc(String customerId);
     Optional<Order> findByOrderCode(String orderCode);
 
     // Tìm các đơn hàng theo một trạng thái cụ thể
     List<Order> findByStatus(OrderStatus status);
 
+    // Đếm tổng số đơn hàng của một khách hàng theo trạng thái
+    long countByCustomer_CustomerIdAndStatus(String customerId, OrderStatus status);
+
     // Thống kê số lượng đơn hàng theo từng trạng thái
-    @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
+    @Query("SELECT o.status, COUNT(o) FROM orders o GROUP BY o.status")
     List<Object[]> countOrdersByStatus();
 
     // Thống kê doanh thu và số lượng đơn hàng trong một khoảng thời gian
     @Query("SELECT FUNCTION('DATE', o.orderDate) AS order_date, SUM(o.finalAmount) AS daily_revenue, COUNT(o) AS order_count " +
-            "FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate AND o.status = :status " +
+            "FROM orders o WHERE o.orderDate BETWEEN :startDate AND :endDate AND o.status = :status " +
             "GROUP BY FUNCTION('DATE', o.orderDate) ORDER BY FUNCTION('DATE', o.orderDate)")
     List<Object[]> findRevenueAndOrderCountByDateRange(
             @Param("startDate") LocalDateTime startDate,
@@ -35,6 +38,13 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     );
 
     // Đếm tổng số đơn và số đơn đã hủy trong khoảng thời gian
-    @Query("SELECT COUNT(o), SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
+    @Query("SELECT COUNT(o), SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) FROM orders o WHERE o.orderDate BETWEEN :startDate AND :endDate")
     List<Object[]> countTotalAndCancelledOrdersByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(o) FROM orders o WHERE o.customer.customerId = :customerId AND o.status = :status AND o.updatedAt >= :since")
+    long countByCustomerAndStatusSince(
+            @Param("customerId") String customerId,
+            @Param("status") OrderStatus status,
+            @Param("since") LocalDateTime since
+    );
 }

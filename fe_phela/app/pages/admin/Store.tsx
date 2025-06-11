@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FiEdit, FiTrash2, FiPlus, FiSearch, FiMapPin, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import "~/assets/css/DeliveryAddress.css"
+import { useAuth } from '~/AuthContext';
 
 const useMapComponents = () => {
   const [mapComponents, setMapComponents] = useState<{
@@ -73,8 +74,18 @@ const Store = () => {
   const [mapPosition, setMapPosition] = useState<[number, number]>([21.0278, 105.8342]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { MapContainer, TileLayer, Marker, useMapEvents, L } = useMapComponents();
+  const { user } = useAuth();
+  const [hasPermission, setHasPermission] = useState(false);
+
 
   useEffect(() => {
+
+    if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
+      setHasPermission(true);
+    } else {
+      setHasPermission(false);
+    }
+
     fetchBranches();
   }, [cityFilter]);
 
@@ -102,7 +113,7 @@ const Store = () => {
     setLoading(true);
     try {
       const response = await api.patch(`/api/admin/branch/${branchCode}/toggle-status`);
-      
+
       setBranches((prev) =>
         prev.map((branch) =>
           branch.branchCode === branchCode ? {
@@ -300,14 +311,14 @@ const Store = () => {
       <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
         <Header />
       </div>
-      
+
       <div className="container mx-auto px-4 pt-24 pb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Quản lý cửa hàng</h1>
             <p className="text-gray-600">Danh sách các cửa hàng trong hệ thống</p>
           </div>
-          
+
           <div className="mt-4 md:mt-0 flex space-x-3">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -321,17 +332,19 @@ const Store = () => {
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
-            
-            <button
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-              className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-            >
-              <FiPlus className="mr-2" />
-              Thêm cửa hàng
-            </button>
+
+            {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              <button
+                onClick={() => {
+                  resetForm();
+                  setIsModalOpen(true);
+                }}
+                className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+              >
+                <FiPlus className="mr-2" />
+                Thêm cửa hàng
+              </button>
+            )}
           </div>
         </div>
 
@@ -363,29 +376,32 @@ const Store = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{branch.city}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{branch.district}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          branch.status === 'SHOW' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${branch.status === 'SHOW'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                          }`}>
                           {branch.status === 'SHOW' ? 'Hoạt động' : 'Ngừng hoạt động'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => openEditModal(branch)}
-                          className="text-primary hover:text-primary-dark p-1"
-                          title="Chỉnh sửa"
-                        >
-                          <FiEdit size={18} />
-                        </button>
-                        <button
-                          onClick={() => toggleStatus(branch.branchCode)}
-                          className={`p-1 ${branch.status === 'SHOW' ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}
-                          title={branch.status === 'SHOW' ? 'Tắt hoạt động' : 'Bật hoạt động'}
-                        >
-                          {branch.status === 'SHOW' ? <FiToggleLeft size={18} /> : <FiToggleRight size={18} />}
-                        </button>
+                        {user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' ? (
+                          <>
+                            <button
+                              onClick={() => openEditModal(branch)}
+                              className="text-primary hover:text-primary-dark p-1"
+                              title="Chỉnh sửa"
+                            >
+                              <FiEdit size={18} />
+                            </button>
+                            <button
+                              onClick={() => toggleStatus(branch.branchCode)}
+                              className={`p-1 ${branch.status === 'SHOW' ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'}`}
+                              title={branch.status === 'SHOW' ? 'Tắt hoạt động' : 'Bật hoạt động'}
+                            >
+                              {branch.status === 'SHOW' ? <FiToggleLeft size={18} /> : <FiToggleRight size={18} />}
+                            </button>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -399,13 +415,18 @@ const Store = () => {
             <h3 className="mt-2 text-lg font-medium text-gray-900">Không có cửa hàng nào</h3>
             <p className="mt-1 text-gray-500">Bạn chưa có cửa hàng nào trong hệ thống.</p>
             <div className="mt-6">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none"
-              >
-                <FiPlus className="-ml-1 mr-2 h-5 w-5" />
-                Thêm cửa hàng mới
-              </button>
+              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setIsModalOpen(true);
+                  }}
+                  className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                >
+                  <FiPlus className="mr-2" />
+                  Thêm cửa hàng
+                </button>
+              )}
             </div>
           </div>
         )}

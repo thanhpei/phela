@@ -92,6 +92,7 @@ public class ApplicationService implements IApplicationService {
                 .build();
     }
 
+
     @Transactional(readOnly = true)
     public List<ApplicationResponseDTO> getApplicationsByJobPostingId(String jobPostingId) {
         if (!jobPostingRepository.existsById(jobPostingId)) {

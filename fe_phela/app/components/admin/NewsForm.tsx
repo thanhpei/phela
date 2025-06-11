@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { createNews, updateNews, getNewsById } from '~/services/newsService';
+import '~/assets/css/DeliveryAddress.css'
 
 interface NewsFormProps {
   newsId?: string | null; 
@@ -92,11 +93,11 @@ const NewsForm: React.FC<NewsFormProps> = ({ newsId, onSuccess }) => {
       </div>
       <div className="mb-6">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="thumbnail">Ảnh thumbnail</label>
-        <input id="thumbnail" type="file" accept="image/*" onChange={handleThumbnailChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+        <input id="thumbnail" type="file" accept="image/*" onChange={handleThumbnailChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-primary hover:file:bg-blue-100" />
         {thumbnailPreview && <img src={thumbnailPreview} alt="Xem trước" className="mt-4 w-48 h-auto rounded" />}
       </div>
       <div className="flex items-center justify-end">
-        <button type="submit" disabled={isSubmitting} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400">
+        <button type="submit" disabled={isSubmitting} className="bg-primary text-white font-bold py-2 px-4 rounded disabled:bg-gray-400">
           {isSubmitting ? 'Đang lưu...' : 'Lưu lại'}
         </button>
       </div>

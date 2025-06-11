@@ -5,13 +5,14 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '~/AuthContext';
 import api from '~/config/axios';
 import { FiEdit, FiLock, FiSave, FiX, FiUser, FiMail, FiAward, FiMapPin } from 'react-icons/fi';
+import '~/assets/css/DeliveryAddress.css'
 
 interface Customer {
   username: string;
   email: string;
   gender: string;
   pointUse: number;
-  orderCancelTimes: number;
+  orderCancelCount: number; 
 }
 
 interface PasswordUpdate {
@@ -30,7 +31,6 @@ const ProfileCustomer = () => {
     gender: '',
   });
 
-  // Hàm xác định hạng thành viên dựa trên điểm
   const getMemberTier = (points: number) => {
     if (points < 10) return 'E-Member';
     if (points < 149) return 'Fa';
@@ -38,26 +38,26 @@ const ProfileCustomer = () => {
     return 'La';
   };
 
-  // Hàm lấy màu sắc và mô tả cho từng hạng
+
   const getTierInfo = (tier: string) => {
     switch(tier) {
       case 'La':
-        return { 
+        return {
           color: 'bg-purple-100 text-purple-800',
           description: 'Hạng cao nhất với nhiều ưu đãi đặc biệt'
         };
       case 'Sol':
-        return { 
+        return {
           color: 'bg-blue-100 text-blue-800',
           description: 'Hạng trung cấp với nhiều ưu đãi'
         };
       case 'Fa':
-        return { 
+        return {
           color: 'bg-green-100 text-green-800',
           description: 'Hạng cơ bản với một số ưu đãi'
         };
       default:
-        return { 
+        return {
           color: 'bg-gray-100 text-gray-800',
           description: 'Hạng mới bắt đầu'
         };
@@ -77,7 +77,7 @@ const ProfileCustomer = () => {
       email: user.email,
       gender: user.gender,
       pointUse: (user as any).pointUse || 0.0,
-      orderCancelTimes: (user as any).orderCancelTimes || 0,
+      orderCancelCount: (user as any).orderCancelCount || 0,
     };
     setCustomer(customerData);
     setFormData({
@@ -119,7 +119,6 @@ const ProfileCustomer = () => {
     setLoading(true);
     setError(null);
 
-    // Kiểm tra dữ liệu trước khi gửi
     if (!validateFormData()) {
       setLoading(false);
       toast.error('Vui lòng kiểm tra lại dữ liệu.');
@@ -132,10 +131,8 @@ const ProfileCustomer = () => {
         gender: formData.gender,
       };
 
-      // Sử dụng updateUserProfile từ AuthContext để cập nhật thông tin
       await updateUserProfile(updateData);
 
-      // Cập nhật customer state với dữ liệu mới
       setCustomer((prev) => ({
         ...prev!,
         email: updateData.email!,
@@ -168,7 +165,6 @@ const ProfileCustomer = () => {
       });
       console.log('Password Update Response:', response.data);
 
-      // Reset form mật khẩu
       setPasswordData({ password: '' });
       setShowPasswordForm(false);
       toast.success('Cập nhật mật khẩu thành công!');
@@ -200,7 +196,7 @@ const ProfileCustomer = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-700">Không tìm thấy thông tin tài khoản</h2>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
@@ -218,7 +214,7 @@ const ProfileCustomer = () => {
     <div className="min-h-screen bg-gray-50">
       <ToastContainer position="top-right" autoClose={3000} />
       <Header />
-      
+
       <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Thông tin tài khoản</h1>
@@ -231,7 +227,6 @@ const ProfileCustomer = () => {
         )}
 
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          {/* Thông tin thành viên */}
           <div className="px-6 py-5 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -247,7 +242,7 @@ const ProfileCustomer = () => {
               </div>
               <div className="mt-4 sm:mt-0">
                 <div className="text-sm text-gray-500">Điểm tích lũy</div>
-                <div className="text-2xl font-bold text-blue-600">{customer.pointUse} điểm</div>
+                <div className="text-2xl font-bold text-primary">{customer.pointUse} điểm</div>
               </div>
             </div>
           </div>
@@ -255,7 +250,6 @@ const ProfileCustomer = () => {
           <div className="p-6">
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {/* Thông tin không thể chỉnh sửa */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                   <div className="flex items-center p-3 bg-gray-50 rounded-lg">
@@ -263,7 +257,6 @@ const ProfileCustomer = () => {
                   </div>
                 </div>
                 
-                {/* Thông tin có thể chỉnh sửa */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                     Email <span className="text-red-500">*</span>
@@ -306,7 +299,7 @@ const ProfileCustomer = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Số lần hủy đơn</label>
                   <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700">{customer.orderCancelTimes}</span>
+                    <span className="text-gray-700">{customer.orderCancelCount}</span> 
                   </div>
                 </div>
               </div>
@@ -341,7 +334,6 @@ const ProfileCustomer = () => {
               </div>
             </form>
 
-            {/* Form đổi mật khẩu */}
             {showPasswordForm && (
               <div className="mt-8 bg-gray-50 p-6 rounded-lg border border-gray-200">
                 <div className="flex justify-between items-center mb-4">
@@ -392,7 +384,7 @@ const ProfileCustomer = () => {
               </div>
             )}
 
-            
+
           </div>
         </div>
       </div>

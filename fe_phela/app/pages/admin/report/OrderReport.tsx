@@ -3,6 +3,11 @@ import Header from '~/components/admin/Header';
 import api from '~/config/axios';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { useAuth } from '~/AuthContext';
+import { FiChevronLeft, FiChevronRight, FiLock } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
@@ -13,22 +18,11 @@ interface DashboardStats {
 }
 
 const OrderReport = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await api.get('/api/dashboard/stats');
-        setStats(response.data);
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const [unauthorized, setUnauthorized] = useState(false);
 
   // Màu sắc được hệ thống hóa
   const colors = {
@@ -37,6 +31,35 @@ const OrderReport = () => {
     success: '#10b981',
     warning: '#f59e0b',
     info: '#3b82f6'
+  };
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
+    if (!user || !allowedRoles.includes(user.role)) {
+      setUnauthorized(true);
+      toast.error('Bạn không có quyền truy cập trang này', {
+        onClose: () => navigate('/admin/dashboard')
+      });
+      return;
+    }
+
+    fetchStats();
+  }, [authLoading, navigate, user]);
+
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/api/dashboard/stats');
+      setStats(response.data);
+    } catch (error: any) {
+      console.error("Failed to fetch stats:", error);
+      toast.error('Không thể tải dữ liệu thống kê. Vui lòng thử lại sau.', {
+        className: 'bg-red-100 text-red-800'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const statusChartData = {
@@ -95,11 +118,59 @@ const OrderReport = () => {
     maintainAspectRatio: false
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
+
+  if (unauthorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <FiLock className="h-6 w-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Truy cập bị từ chối</h2>
+          <p className="text-gray-600 mb-6">
+            Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập.
+          </p>
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+          >
+            Quay lại trang Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="p-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8">Báo cáo Đơn hàng</h1>
+    <div className="relative min-h-screen bg-gray-50">
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        toastClassName="border border-gray-200 shadow-lg"
+        progressClassName="bg-amber-500"
+        closeButton={false}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <Header />
+      </div>
+      
+      <div className="container mx-auto px-4 py-20 sm:px-6 lg:px-8">
+        <h1 className="text-2xl font-bold text-gray-800 mb-8">Báo cáo Đơn hàng</h1>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -147,7 +218,7 @@ const OrderReport = () => {
             <div className="h-80">
               {loading ? (
                 <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
                 </div>
               ) : (
                 <Doughnut
@@ -173,7 +244,7 @@ const OrderReport = () => {
             <div className="h-80">
               {loading ? (
                 <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
                 </div>
               ) : (
                 <Bar

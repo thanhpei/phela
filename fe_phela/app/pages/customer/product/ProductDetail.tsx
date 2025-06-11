@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import HeadOrder from '~/components/customer/HeadOrder';
 import api from '~/config/axios';
+import { useAuth } from '~/AuthContext';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import '~/assets/css/ProductDetail.css';
 
 interface Product {
@@ -18,6 +21,8 @@ const ProductDetail = () => {
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -36,6 +41,38 @@ const ProductDetail = () => {
             fetchProduct();
         }
     }, [productId]);
+
+    const addToCart = async () => {
+        if (!user || user.type !== 'customer') {
+            toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng', {
+                onClick: () => navigate('/login')
+            });
+            return;
+        }
+
+        if (!product) return;
+
+        try {
+            const customerId = user.customerId;
+            const cartResponse = await api.get(`/api/customer/cart/getCustomer/${customerId}`);
+            const cartId = cartResponse.data.cartId;
+
+            if (cartId) {
+                const cartItemDTO = {
+                    productId: product.productId,
+                    quantity: 1,
+                    amount: product.originalPrice * 1,
+                    note: ''
+                };
+                await api.post(`/api/customer/cart/${cartId}/items`, cartItemDTO);
+                window.dispatchEvent(new Event('cartUpdated'));
+                toast.success('Đã thêm sản phẩm vào giỏ hàng');
+            }
+        } catch (err) {
+            console.error('Error adding to cart:', err);
+            toast.error('Không thể thêm sản phẩm vào giỏ hàng');
+        }
+    };
 
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
@@ -61,7 +98,7 @@ const ProductDetail = () => {
                             {product.originalPrice.toLocaleString()} VND
                         </div>
                         <div className="flex gap-4">
-                            <button className="add-to-cart-btn transition-colors" onClick={() => alert('Thêm vào giỏ hàng')}>
+                            <button className="add-to-cart-btn transition-colors" onClick={addToCart}>
                                 Thêm vào giỏ hàng
                             </button>
                         </div>
@@ -72,6 +109,7 @@ const ProductDetail = () => {
                 <h2 className="text-xl font-bold mb-2 uppercase text-center text-neutral-600 underline">Chi tiết sản phẩm</h2>
                 <p className="text-gray-600">{product.description}</p>
             </div>
+            <ToastContainer position="top-right" autoClose={3000} />
         </div>
     );
 };

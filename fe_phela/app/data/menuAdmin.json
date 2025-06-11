@@ -39,18 +39,10 @@
           "id":4,
           "title": "Khuyến mãi",
           "link": "/admin/dashboard",
-          "subMenu": [
-              {
-                  "title": "Chương trình khuyến mãi",
-                  "link": "/admin/chuong-trinh-khuyen-mai"
-              },
+          "subMenu": [             
               {
                   "title": "Mã giảm giá",
                   "link": "/admin/ma-giam-gia"
-              },
-              {
-                  "title": "Quà tặng",
-                  "link": "/admin/qua-tang"
               }
           ]
         },

@@ -71,10 +71,10 @@ public class Customer implements UserDetails {
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;
 
-    // Số lần hủy đơn liên tiếp (>5 -> cấm tài khoản)
-    @Builder.Default
-    @Column(name = "order_cancel_times",nullable = false)
-    private int orderCancelTimes = 0;
+//    // Số lần hủy đơn liên tiếp (>5 -> cấm tài khoản)
+//    @Builder.Default
+//    @Column(name = "order_cancel_times",nullable = false)
+//    private int orderCancelTimes = 0;
 
     @Column(name = "latitude")
     Double latitude;

@@ -3,6 +3,11 @@ import Header from '~/components/admin/Header';
 import api from '~/config/axios';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { useAuth } from '~/AuthContext';
+import { FiChevronLeft, FiChevronRight, FiLock } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -19,27 +24,42 @@ interface RevenueReport {
 }
 
 const Revenue = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [period, setPeriod] = useState('month');
   const [report, setReport] = useState<RevenueReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
 
   useEffect(() => {
-    const fetchRevenue = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await api.get(`/api/dashboard/revenue-report?period=${period}`);
-        setReport(response.data);
-      } catch (error: any) {
-        console.error(`Failed to fetch ${period} revenue:`, error);
-        setError(`Không thể tải dữ liệu doanh thu: ${error.response?.data?.message || error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (authLoading) return;
+
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
+    if (!user || !allowedRoles.includes(user.role)) {
+      setUnauthorized(true);
+      toast.error('Bạn không có quyền truy cập trang này', {
+        onClose: () => navigate('/admin/dashboard')
+      });
+      return;
+    }
+
     fetchRevenue();
-  }, [period]);
+  }, [period, authLoading, navigate, user]);
+
+  const fetchRevenue = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get(`/api/dashboard/revenue-report?period=${period}`);
+      setReport(response.data);
+    } catch (error: any) {
+      console.error(`Failed to fetch ${period} revenue:`, error);
+      toast.error('Không thể tải dữ liệu doanh thu. Vui lòng thử lại sau.', {
+        className: 'bg-red-100 text-red-800'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatRevenue = (value: number) => {
     if (value >= 1_000_000_000) {
@@ -119,7 +139,6 @@ const Revenue = () => {
             return label;
           },
           afterLabel: function (context: any) {
-            // Hiển thị thêm số đơn hàng trong tooltip
             const dataIndex = context.dataIndex;
             const orderCount = report?.dailyData?.[dataIndex]?.orderCount || 0;
             return `Đơn hàng: ${orderCount}`;
@@ -151,16 +170,64 @@ const Revenue = () => {
           display: false
         },
         ticks: {
-          maxTicksLimit: 10 // Giới hạn số lượng nhãn trên trục X
+          maxTicksLimit: 10
         }
       }
     },
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
+
+  if (unauthorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <FiLock className="h-6 w-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Truy cập bị từ chối</h2>
+          <p className="text-gray-600 mb-6">
+            Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập.
+          </p>
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+          >
+            Quay lại trang Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="p-6 max-w-7xl mx-auto">
+    <div className="relative min-h-screen bg-gray-50">
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        toastClassName="border border-gray-200 shadow-lg"
+        progressClassName="bg-amber-500"
+        closeButton={false}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <Header />
+      </div>
+      
+      <div className="container mx-auto px-4 py-20 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">Báo cáo Doanh thu</h1>
         
         <div className="mb-8 flex flex-wrap gap-2">
@@ -171,7 +238,7 @@ const Revenue = () => {
               disabled={loading}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
                 period === p 
-                ? 'bg-[#d4a373] text-white shadow-md' 
+                ? 'bg-amber-600 text-white shadow-md' 
                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
@@ -180,26 +247,8 @@ const Revenue = () => {
           ))}
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Lỗi tải dữ liệu</h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#d4a373]">
+          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500">
             <h3 className="text-sm font-medium text-gray-500">Tổng Doanh thu ({formatPeriodLabel(period)})</h3>
             <p className="text-2xl font-bold mt-1 text-gray-800">
               {report ? formatRevenue(report.totalRevenue) : '0'} VND
@@ -213,7 +262,7 @@ const Revenue = () => {
               </p>
             )}
           </div>
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#a5a58d]">
+          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-gray-500">
             <h3 className="text-sm font-medium text-gray-500">Tổng Đơn hàng thành công ({formatPeriodLabel(period)})</h3>
             <p className="text-2xl font-bold mt-1 text-gray-800">
               {report?.totalOrders?.toLocaleString('vi-VN') || 0}
@@ -236,17 +285,8 @@ const Revenue = () => {
           
           {loading ? (
             <div className="flex justify-center items-center h-96">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d4a373]"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
               <span className="ml-3 text-gray-600">Đang tải dữ liệu...</span>
-            </div>
-          ) : error ? (
-            <div className="flex justify-center items-center h-96 text-gray-500">
-              <div className="text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <p className="mt-2">Không thể hiển thị biểu đồ</p>
-              </div>
             </div>
           ) : report && report.dailyData && report.dailyData.length > 0 ? (
             <div className="h-96">

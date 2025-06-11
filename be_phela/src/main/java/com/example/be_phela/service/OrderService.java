@@ -159,6 +159,24 @@ public class OrderService implements IOrderService {
             customer.setPointUse(customer.getPointUse() - 1);
             customerRepository.save(customer);
         }
+
+        checkAndBlockCustomer(order.getCustomer());
+    }
+
+    private void checkAndBlockCustomer(Customer customer) {
+        LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
+
+        // Đếm số đơn hàng đã hủy trong 3 tháng qua
+        long cancelledCount = orderRepository.countByCustomerAndStatusSince(
+                customer.getCustomerId(),
+                OrderStatus.CANCELLED,
+                threeMonthsAgo
+        );
+
+        // Nếu số lần hủy vượt quá 5, khóa tài khoản
+        if (cancelledCount >= 5) {
+            customerRepository.updateStatus(customer.getCustomerId(), Status.BLOCKED);
+        }
     }
 
     @Override
@@ -207,7 +225,7 @@ public class OrderService implements IOrderService {
     @Override
     @Transactional
     public List<OrderResponseDTO> getOrdersByCustomerId(String customerId) {
-        List<Order> orders = orderRepository.findByCustomer_CustomerId(customerId);
+        List<Order> orders = orderRepository.findByCustomer_CustomerIdOrderByOrderDateDesc(customerId);
         return orders.stream()
                 .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());
@@ -274,6 +292,26 @@ public class OrderService implements IOrderService {
     @Override
     public List<OrderResponseDTO> getOrdersByStatus(OrderStatus status) {
         List<Order> orders = orderRepository.findByStatus(status);
+        // Chỉ áp dụng logic sắp xếp đặc biệt cho trạng thái CONFIRMED
+        if (status == OrderStatus.CONFIRMED) {
+            // Sắp xếp danh sách: ưu tiên các đơn hàng chỉ có 1 sản phẩm lên đầu
+            orders.sort((o1, o2) -> {
+                boolean o1HasOneProduct = o1.getOrderItems().size() == 1;
+                boolean o2HasOneProduct = o2.getOrderItems().size() == 1;
+
+                if (o1HasOneProduct && !o2HasOneProduct) {
+                    return -1;
+                } else if (!o1HasOneProduct && o2HasOneProduct) {
+                    return 1;
+                } else {
+                    // Nếu cả hai cùng có 1 sản phẩm hoặc cùng có nhiều sản phẩm,
+                    // có thể sắp xếp phụ theo ngày đặt hàng để đảm bảo tính nhất quán.
+                    // Ở đây tạm giữ nguyên thứ tự tương đối.
+                    return 0;
+                }
+            });
+        }
+
         return orders.stream()
                 .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());

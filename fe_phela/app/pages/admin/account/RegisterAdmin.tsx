@@ -1,7 +1,8 @@
-import { route } from "@react-router/dev/routes";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from '~/services/authServices';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const RegisterAdmin = () => {
     const navigate = useNavigate();
@@ -14,9 +15,8 @@ const RegisterAdmin = () => {
         phone: '',
         gender: '',
     });
-    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    // Hàm chuyển đổi định dạng ngày từ YYYY-MM-DD sang dd/MM/yyyy
     const formatDateToDDMMYYYY = (dateStr: string) => {
         if (!dateStr) return '';
         const date = new Date(dateStr);
@@ -26,59 +26,56 @@ const RegisterAdmin = () => {
         return `${day}/${month}/${year}`;
     };
 
-    // Hàm kiểm tra mật khẩu
     const validatePassword = (password: string) => {
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,128}$/;
         return passwordRegex.test(password);
     };
 
     const handleRegister = async () => {
+        // Kiểm tra dữ liệu phía client trước
+        if (!formData.fullname || !formData.username || !formData.password || !formData.dob || !formData.email || !formData.phone || !formData.gender) {
+            toast.error('Không được để trống bất kỳ trường nào!');
+            return;
+        }
+
+        if (!validatePassword(formData.password)) {
+            toast.error('Mật khẩu phải chứa ít nhất 8 ký tự, bao gồm chữ thường, chữ hoa, số và ký tự đặc biệt.');
+            return;
+        }
+
+        setLoading(true);
         try {
-            // Kiểm tra dữ liệu trước khi gửi
-            if (!formData.fullname || !formData.username || !formData.password || !formData.dob || !formData.email || !formData.phone || !formData.gender) {
-                setError('Không được để trống bất kỳ trường nào!');
-                return;
-            }
-
-            if (!validatePassword(formData.password)) {
-                setError('Mật khẩu phải chứa ít nhất 8 ký tự, bao gồm chữ thường, chữ hoa, số và ký tự đặc biệt.');
-                return;
-            }
-
             const formattedData = {
                 ...formData,
                 dob: formData.dob ? formatDateToDDMMYYYY(formData.dob) : '',
-                // Không chuẩn hóa gender, gửi trực tiếp "Nam", "Nữ", "Khác"
             };
 
             await registerAdmin(formattedData);
-            console.log('Admin đăng ký thành công');
-            alert('Đăng ký thành công!');
-            // Xoá dữ liệu sau khi đăng ký thành công
-            setFormData({
-                fullname: '',
-                username: '',
-                password: '',
-                dob: '',
-                email: '',
-                phone: '',
-                gender: 
-                '',
-            });
-            setError('');
-            // Chuyển hướng sau khi đăng ký thành công
-            navigate('/');
+            toast.success('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.');
+            
+            // Reset form và chuyển hướng sau một khoảng trễ ngắn để người dùng đọc toast
+            setTimeout(() => {
+                setFormData({
+                    fullname: '', username: '', password: '', dob: '', email: '', phone: '', gender: ''
+                });
+                navigate('/');
+            }, 2000);
+
         } catch (err: any) {
-            // Hiển thị lỗi chi tiết từ backend nếu có
-            setError(err.response?.data?.message || 'Admin registration failed.');
-            alert('Đăng ký không thành công! Vui lòng thử lại sau!');
+            // Hiển thị lỗi chi tiết từ backend
+            const errorMessage = err.response?.data?.message || 'Đăng ký không thành công! Vui lòng thử lại sau!';
+            toast.error(errorMessage);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div className="flex flex-col justify-center items-center p-10 bg-yellow-50 text-black h-screen overflow-y-auto">
+            <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
             <h2 className="text-3xl font-bold mb-6">Admin Register</h2>
 
+            {/* Các trường input không thay đổi */}
             <input
                 type="text"
                 value={formData.fullname}
@@ -86,7 +83,6 @@ const RegisterAdmin = () => {
                 placeholder="Fullname"
                 className="p-2 mb-4 w-80 rounded border"
             />
-
             <input
                 type="text"
                 value={formData.username}
@@ -94,7 +90,6 @@ const RegisterAdmin = () => {
                 placeholder="Username"
                 className="p-2 mb-4 w-80 rounded border"
             />
-
             <input
                 type="password"
                 value={formData.password}
@@ -102,7 +97,6 @@ const RegisterAdmin = () => {
                 placeholder="Password"
                 className="p-2 mb-4 w-80 rounded border"
             />
-
             <input
                 type="email"
                 value={formData.email}
@@ -110,7 +104,6 @@ const RegisterAdmin = () => {
                 placeholder="Email"
                 className="p-2 mb-4 w-80 rounded border"
             />          
-
             <input
                 type="date"
                 value={formData.dob}
@@ -118,7 +111,6 @@ const RegisterAdmin = () => {
                 placeholder="Date of Birth"
                 className="p-2 mb-4 w-80 rounded border"
             />
-
             <input
                 type="text"
                 value={formData.phone}
@@ -126,7 +118,6 @@ const RegisterAdmin = () => {
                 placeholder="Phone (10-11 digits)"
                 className="p-2 mb-4 w-80 rounded border"
             />
-
             <select 
                 className="p-2 mb-4 w-80 rounded border" 
                 value={formData.gender} 
@@ -140,11 +131,11 @@ const RegisterAdmin = () => {
 
             <button 
                 onClick={handleRegister} 
-                className="w-64 p-2 bg-black text-white rounded transition delay-150 duration-300 ease-in-out hover:-translate-y-1 hover:scale-110 drop-shadow-lg"
+                disabled={loading}
+                className="w-64 p-2 bg-black text-white rounded transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-110 drop-shadow-lg disabled:bg-gray-500"
             >
-                Register
+                {loading ? 'Đang xử lý...' : 'Register'}
             </button>
-            {error && <p className="text-red-500 mt-4">{error}</p>}
         </div>
     );
 };

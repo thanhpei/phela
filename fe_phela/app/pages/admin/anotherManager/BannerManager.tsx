@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Header from '~/components/admin/Header';
 import Modal from '~/components/admin/Modal';
 import { getAllBanners, createBanner, deleteBanner, updateBannerStatus } from '~/services/bannerService';
+import { FiLock } from 'react-icons/fi';
+import { useAuth } from '~/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import '~/assets/css/DeliveryAddress.css'
 
 
 export enum BannerStatus {
@@ -24,10 +30,25 @@ const BannerManager = () => {
     const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const navigate = useNavigate();
+    const { user, loading: authLoading } = useAuth();
+    const [unauthorized, setUnauthorized] = useState<boolean>(false);
 
     useEffect(() => {
+
+        if (authLoading) return;
+
+        const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
+        if (!user || !allowedRoles.includes(user.role)) {
+            setUnauthorized(true);
+            toast.error('Bạn không có quyền truy cập trang này', {
+                onClose: () => navigate('/admin/dashboard')
+            });
+            return;
+        }
+
         fetchBanners();
-    }, []);
+    }, [user, authLoading, navigate]);
 
     const fetchBanners = async () => {
         try {
@@ -101,11 +122,54 @@ const BannerManager = () => {
         setPreview(null);
     };
 
-    if (loading) return <div>Đang tải...</div>;
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
+            </div>
+        );
+    }
+
+    if (unauthorized) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+                <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                        <FiLock className="h-6 w-6 text-red-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-800 mb-2">Truy cập bị từ chối</h2>
+                    <p className="text-gray-600 mb-6">
+                        Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập.
+                    </p>
+                    <button
+                        onClick={() => navigate('/admin/dashboard')}
+                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                    >
+                        Quay lại trang Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
             <div>
+                <ToastContainer
+                    position="top-right"
+                    autoClose={3000}
+                    toastClassName="border border-gray-200 shadow-lg"
+                    progressClassName="bg-amber-500"
+                    closeButton={false}
+                    hideProgressBar={false}
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="light"
+                />
                 <div className="fixed top-0 left-0 w-full bg-white shadow-md z-40">
                     <Header />
                 </div>
@@ -114,7 +178,7 @@ const BannerManager = () => {
                         <h1 className="text-3xl font-bold">Quản lý banner</h1>
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                            className="bg-primary text-white font-bold py-2 px-4 rounded"
                         >
                             + Thêm banner mới
                         </button>
@@ -123,7 +187,7 @@ const BannerManager = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {banners.map(banner => (
                             <div key={banner.bannerId} className="bg-white rounded-lg shadow-md overflow-hidden">
-                                <img src={banner.imageUrl} alt="Banner" className="w-full h-48 object-cover"/>
+                                <img src={banner.imageUrl} alt="Banner" className="w-full h-48 object-cover" />
                                 <div className="p-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center">
@@ -165,7 +229,7 @@ const BannerManager = () => {
                     {preview && (
                         <div className="mb-4">
                             <p className="text-sm font-semibold mb-2">Xem trước:</p>
-                            <img src={preview} alt="Xem trước banner" className="w-full rounded-md object-contain max-h-64"/>
+                            <img src={preview} alt="Xem trước banner" className="w-full rounded-md object-contain max-h-64" />
                         </div>
                     )}
                     <div className="flex justify-end">

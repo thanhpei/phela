@@ -3,9 +3,9 @@ import Header from '~/components/admin/Header';
 import api from '~/config/axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import '~/assets/css/DeliveryAddress.css'
 import { useAuth } from '~/AuthContext';
-import { FiPlus, FiEdit2, FiTrash2, FiChevronLeft, FiChevronRight, FiX, FiPercent, FiDollarSign, FiCalendar, FiClock } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiChevronLeft, FiChevronRight, FiX, FiPercent, FiDollarSign, FiCalendar, FiClock, FiLock } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 interface DiscountCode {
   promotionId: string;
@@ -34,6 +34,7 @@ interface DiscountCodeCreateDTO {
 }
 
 const DiscountCode = () => {
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -54,13 +55,15 @@ const DiscountCode = () => {
     endDate: '',
     status: 'ACTIVE',
   });
+  const [unauthorized, setUnauthorized] = useState<boolean>(false);
 
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user || !(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN')) {
-      toast.error('Bạn không có quyền truy cập trang này.');
-      window.location.href = '/admin';
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
+    if (!user || !allowedRoles.includes(user.role)) {
+      setUnauthorized(true);
+      toast.error('Bạn không có quyền truy cập trang này');
       return;
     }
 
@@ -93,7 +96,9 @@ const DiscountCode = () => {
     } catch (error: any) {
       console.error('Error fetching discount codes:', error);
       setError('Không thể tải danh sách mã giảm giá. Vui lòng thử lại.');
-      toast.error('Lỗi tải danh sách mã giảm giá');
+      toast.error('Lỗi tải danh sách mã giảm giá', {
+        className: 'bg-red-100 text-red-800'
+      });
     } finally {
       setLoading(false);
     }
@@ -101,17 +106,13 @@ const DiscountCode = () => {
 
   const handleCreateOrUpdateDiscountCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) {
-      console.log('Request already in progress, ignoring...');
-      return;
-    }
+    if (isSubmitting) return;
 
     if (!newDiscountCode.name.trim() || newDiscountCode.discountValue <= 0 || !newDiscountCode.startDate || !newDiscountCode.endDate) {
       toast.error('Tên, giá trị giảm giá, ngày bắt đầu và ngày kết thúc là bắt buộc.');
       return;
     }
 
-    // Kiểm tra ngày hợp lệ
     const startDate = new Date(newDiscountCode.startDate);
     const endDate = new Date(newDiscountCode.endDate);
     if (startDate >= endDate) {
@@ -122,17 +123,11 @@ const DiscountCode = () => {
     setIsSubmitting(true);
     try {
       if (editDiscountCode) {
-        // Cập nhật mã giảm giá
-        console.log('Sending update request for discount code:', editDiscountCode.promotionId);
         const response = await api.put(`/api/promotion/${editDiscountCode.promotionId}`, newDiscountCode);
-        console.log('Update response:', response.data);
         setDiscountCodes(discountCodes.map(d => d.promotionId === editDiscountCode.promotionId ? response.data : d));
         toast.success('Cập nhật mã giảm giá thành công!');
       } else {
-        // Tạo mới mã giảm giá
-        console.log('Sending create request for new discount code...');
         const response = await api.post('/api/promotion', newDiscountCode);
-        console.log('Create response:', response.data);
         setDiscountCodes([response.data, ...discountCodes]);
         toast.success('Tạo mã giảm giá thành công!');
       }
@@ -151,7 +146,6 @@ const DiscountCode = () => {
       setIsModalOpen(false);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
-      console.error('Error in create/update discount code:', errorMessage);
       toast.error(`Không thể ${editDiscountCode ? 'cập nhật' : 'tạo'} mã giảm giá: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
@@ -161,13 +155,11 @@ const DiscountCode = () => {
   const handleDeleteDiscountCode = async (promotionId: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa mã giảm giá này?')) return;
     try {
-      console.log('Sending delete request for discount code:', promotionId);
       await api.delete(`/api/promotion/${promotionId}`);
       setDiscountCodes(discountCodes.filter(d => d.promotionId !== promotionId));
       toast.success('Xóa mã giảm giá thành công!');
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
-      console.error('Error deleting discount code:', errorMessage);
       toast.error(`Không thể xóa mã giảm giá: ${errorMessage}`);
     }
   };
@@ -182,7 +174,7 @@ const DiscountCode = () => {
         discountValue: discountCode.discountValue,
         minimumOrderAmount: discountCode.minimumOrderAmount,
         maxDiscountAmount: discountCode.maxDiscountAmount,
-        startDate: discountCode.startDate.slice(0, 16), // Định dạng cho input datetime-local
+        startDate: discountCode.startDate.slice(0, 16),
         endDate: discountCode.endDate.slice(0, 16),
         status: discountCode.status === 'EXPIRED' ? 'ACTIVE' : discountCode.status,
       });
@@ -219,7 +211,6 @@ const DiscountCode = () => {
     });
   };
 
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -232,22 +223,60 @@ const DiscountCode = () => {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
+
+  if (unauthorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <FiLock className="h-6 w-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Truy cập bị từ chối</h2>
+          <p className="text-gray-600 mb-6">
+            Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập.
+          </p>
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+          >
+            Quay lại trang Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ToastContainer position="top-right" autoClose={3000} />
-      <Header />
-
-      <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-gray-50">
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        toastClassName="border border-gray-200 shadow-lg"
+        progressClassName="bg-amber-500"
+        closeButton={false}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <Header />
+      </div>
+      
+      <div className="container mx-auto px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý mã giảm giá</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Quản lý Mã giảm giá</h1>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            onClick={() => openModal()}
+            className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
           >
             <FiPlus className="mr-2" /> Thêm mã giảm giá
           </button>
@@ -262,7 +291,7 @@ const DiscountCode = () => {
         <div className="bg-white shadow rounded-lg overflow-hidden">
           {loading ? (
             <div className="flex justify-center items-center p-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
             </div>
           ) : discountCodes.length > 0 ? (
             <>
@@ -354,7 +383,7 @@ const DiscountCode = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
                             onClick={() => openModal(discountCode)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-amber-600 hover:text-amber-900"
                             title="Chỉnh sửa"
                           >
                             <FiEdit2 />
@@ -368,13 +397,11 @@ const DiscountCode = () => {
                           </button>
                         </td>
                       </tr>
-                    )
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Phân trang */}
               {totalPages > 1 && (
                 <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                   <div className="flex-1 flex justify-between sm:hidden">
@@ -431,8 +458,8 @@ const DiscountCode = () => {
               <h3 className="mt-2 text-sm font-medium text-gray-900">Không có mã giảm giá nào</h3>
               <div className="mt-6">
                 <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={() => openModal()}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
                 >
                   <FiPlus className="-ml-1 mr-2 h-5 w-5" />
                   Thêm mã giảm giá
@@ -443,7 +470,6 @@ const DiscountCode = () => {
         </div>
       </div>
 
-      {/* Modal thêm/cập nhật */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -475,7 +501,7 @@ const DiscountCode = () => {
                         id="name"
                         value={newDiscountCode.name}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, name: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         required
                       />
                     </div>
@@ -488,7 +514,7 @@ const DiscountCode = () => {
                         id="description"
                         value={newDiscountCode.description}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, description: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                       />
                     </div>
                     <div>
@@ -499,7 +525,7 @@ const DiscountCode = () => {
                         id="discountType"
                         value={newDiscountCode.discountType}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, discountType: e.target.value as any })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         required
                       >
                         <option value="PERCENTAGE">Phần trăm</option>
@@ -515,7 +541,7 @@ const DiscountCode = () => {
                         id="discountValue"
                         value={newDiscountCode.discountValue}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, discountValue: parseFloat(e.target.value) || 0 })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         min="0"
                         required
                       />
@@ -529,7 +555,7 @@ const DiscountCode = () => {
                         id="minimumOrderAmount"
                         value={newDiscountCode.minimumOrderAmount || ''}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, minimumOrderAmount: e.target.value ? parseFloat(e.target.value) : undefined })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         min="0"
                       />
                     </div>
@@ -542,7 +568,7 @@ const DiscountCode = () => {
                         id="maxDiscountAmount"
                         value={newDiscountCode.maxDiscountAmount || ''}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, maxDiscountAmount: e.target.value ? parseFloat(e.target.value) : undefined })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         min="0"
                       />
                     </div>
@@ -555,7 +581,7 @@ const DiscountCode = () => {
                         id="startDate"
                         value={newDiscountCode.startDate}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, startDate: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         required
                       />
                     </div>
@@ -568,7 +594,7 @@ const DiscountCode = () => {
                         id="endDate"
                         value={newDiscountCode.endDate}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, endDate: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         required
                       />
                     </div>
@@ -580,7 +606,7 @@ const DiscountCode = () => {
                         id="status"
                         value={newDiscountCode.status}
                         onChange={(e) => setNewDiscountCode({ ...newDiscountCode, status: e.target.value as any })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                         required
                       >
                         <option value="ACTIVE">Hoạt động</option>
@@ -592,13 +618,13 @@ const DiscountCode = () => {
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
                     >
                       Hủy bỏ
                     </button>
                     <button
                       type="submit"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (

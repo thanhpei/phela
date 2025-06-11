@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import HeadOrder from '~/components/customer/HeadOrder';
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from '~/config/axios';
 import '~/assets/css/DeliveryAddress.css'
 import { useAuth } from '~/AuthContext';
@@ -29,6 +29,7 @@ const Product = () => {
     const [error, setError] = useState('');
     const categoryRefs = useRef<{ [key: string]: HTMLDivElement }>({});
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchCategoriesAndProducts = async () => {
@@ -75,7 +76,9 @@ const Product = () => {
 
     const addToCart = async (productId: string) => {
         if (!user || user.type !== 'customer') {
-            toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+            toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng', {
+                onClick: () => navigate('/login')
+            });
             return;
         }
 
@@ -218,6 +221,7 @@ const Product = () => {
                     </div>
                 </div>
             </div>
+            <ToastContainer position="top-right" autoClose={3000} />
         </div>
     );
 };

@@ -19,8 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Entity
-@Table(name = "orders")
+@Entity(name = "orders")
 public class Order {
     @Id
     @UuidGenerator

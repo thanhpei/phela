@@ -19,6 +19,7 @@ interface AdminUser extends UserBase {
   phone: string;
   gender: string;
   dob: string;
+  branch: string;
 }
 
 interface CustomerUser extends UserBase {

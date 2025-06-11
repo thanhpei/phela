@@ -23,4 +23,5 @@ public class CustomerResponseDTO {
     Roles role;
     Status status;
     Double pointUse;
+    long orderCancelCount;
 }

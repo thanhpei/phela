@@ -10,9 +10,11 @@ import com.example.be_phela.exception.ResourceNotFoundException;
 import com.example.be_phela.interService.ICustomerService;
 import com.example.be_phela.mapper.CustomerMapper;
 import com.example.be_phela.model.Customer;
+import com.example.be_phela.model.enums.OrderStatus;
 import com.example.be_phela.model.enums.Roles;
 import com.example.be_phela.model.enums.Status;
 import com.example.be_phela.repository.CustomerRepository;
+import com.example.be_phela.repository.OrderRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -30,6 +32,7 @@ import java.util.Optional;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CustomerService implements ICustomerService {
     private final CustomerRepository customerRepository;
+    private final OrderRepository orderRepository;
     CustomerMapper customerMapper;
     BCryptPasswordEncoder passwordEncoder;
     CartService cartService;
@@ -72,14 +75,14 @@ public class CustomerService implements ICustomerService {
     @Override
     public Page<CustomerResponseDTO> getAllCustomers(Pageable pageable) {
         return customerRepository.findAll(pageable)
-                .map(customerMapper::toCustomerResponseDTO);
+                .map(this::mapCustomerToDtoWithCancelCount);
     }
 
     @Override
     public CustomerResponseDTO findCustomerByUsername(String username) {
         Customer customer = customerRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with username: " + username));
-        return customerMapper.toCustomerResponseDTO(customer);
+        return mapCustomerToDtoWithCancelCount(customer);
     }
 
     // Cập nhật thông tin chung (email, gender)
@@ -121,5 +124,12 @@ public class CustomerService implements ICustomerService {
         customer.setPassword(passwordEncoder.encode(passwordUpdateDTO.getPassword()));
         Customer updatedCustomer = customerRepository.save(customer);
         return customerMapper.toCustomerResponseDTO(updatedCustomer);
+    }
+
+    private CustomerResponseDTO mapCustomerToDtoWithCancelCount(Customer customer) {
+        CustomerResponseDTO dto = customerMapper.toCustomerResponseDTO(customer);
+        long cancelCount = orderRepository.countByCustomer_CustomerIdAndStatus(customer.getCustomerId(), OrderStatus.CANCELLED);
+        dto.setOrderCancelCount(cancelCount);
+        return dto;
     }
 }

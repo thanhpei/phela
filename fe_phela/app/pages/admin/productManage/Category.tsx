@@ -3,9 +3,9 @@ import Header from '~/components/admin/Header';
 import api from '~/config/axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import '~/assets/css/DeliveryAddress.css'
 import { useAuth } from '~/AuthContext';
-import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
+import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiChevronLeft, FiChevronRight, FiX, FiLock } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 interface Category {
   categoryCode: string;
@@ -19,6 +19,7 @@ interface CategoryCreateDTO {
 }
 
 const Category = () => {
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -29,18 +30,22 @@ const Category = () => {
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [unauthorized, setUnauthorized] = useState<boolean>(false);
 
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user || !(user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'STAFF')) {
-      toast.error('Bạn không có quyền truy cập trang này.');
-      window.location.href = '/admin/dashboard';
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
+    if (!user || !allowedRoles.includes(user.role)) {
+      setUnauthorized(true);
+      toast.error('Bạn không có quyền truy cập trang này', {
+        onClose: () => navigate('/admin/dashboard')
+      });
       return;
     }
 
     fetchCategories();
-  }, [currentPage, searchName, user, authLoading]);
+  }, [currentPage, searchName, user, authLoading, navigate]);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -70,7 +75,9 @@ const Category = () => {
     } catch (error: any) {
       console.error('Error fetching categories:', error.response ? error.response.data : error.message);
       setError('Không thể tải danh sách danh mục. Vui lòng thử lại.');
-      toast.error('Lỗi tải danh sách danh mục. Kiểm tra console để biết thêm chi tiết.');
+      toast.error('Lỗi tải danh sách danh mục. Vui lòng kiểm tra kết nối và thử lại.', {
+        className: 'bg-red-100 text-red-800'
+      });
     } finally {
       setLoading(false);
     }
@@ -140,13 +147,49 @@ const Category = () => {
     );
   }
 
+  if (unauthorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <FiLock className="h-6 w-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Truy cập bị từ chối</h2>
+          <p className="text-gray-600 mb-6">
+            Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập.
+          </p>
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+          >
+            Quay lại trang Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-gray-50">
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        toastClassName="border border-gray-200 shadow-lg"
+        progressClassName="bg-amber-500"
+        closeButton={false}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
         <Header />
       </div>
-      
+
       <div className="container mx-auto px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Quản lý Danh mục Sản phẩm</h1>
