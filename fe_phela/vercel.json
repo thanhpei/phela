@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "routes/CustomerDashboard.tsx"
+      "destination": "HomeCustomer.tsx"
     }
   ]
 }
