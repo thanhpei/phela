@@ -51,7 +51,7 @@ const adminRoutes: RouteConfig = [
       route("don-hang", "routes/orderManage.tsx"),
       route("don-hang/:orderId", "routes/orderDetailReport.tsx"),
       route("bao-cao-don-hang", "routes/orderReport.tsx"),
-      route("doanh-thu", "routes/Revenue.tsx"),
+      route("doanh-thu", "routes/revenue.tsx"),
       route("chuong-trinh-khuyen-mai", "routes/promotions.tsx"),
       route("qua-tang", "routes/present.tsx"),
       route("ma-giam-gia", "routes/discountCode.tsx"),
