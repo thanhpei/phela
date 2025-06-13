@@ -27,6 +27,10 @@ public class FileStorageService {
         return uploadToCloudinary(file, "banners");
     }
 
+    public String storeChatImage(MultipartFile file) throws IOException { // Thêm phương thức này
+        return uploadToCloudinary(file, "chat");
+    }
+
     private String uploadToCloudinary(MultipartFile file, String folderName) throws IOException {
         if (file == null || file.isEmpty()) {
 

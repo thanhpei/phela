@@ -23,4 +23,5 @@ public interface ICustomerService {
     CustomerResponseDTO findCustomerByUsername(String username);
 
     CustomerResponseDTO updateCustomerInfo(String username, CustomerUpdateDTO customerUpdateDTO);
+    Optional<Customer> findByEmail(String email);
 }

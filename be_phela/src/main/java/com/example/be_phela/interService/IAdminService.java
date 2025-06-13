@@ -14,12 +14,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface IAdminService {
     String generateEmployCode();
     Admin buildAdmin(AdminCreateDTO adminCreateDTO, String ip);
     Page<AdminResponseDTO> getAllAdmins(Pageable pageable);
     AdminResponseDTO findAdminByUsername(String username);
+    Optional<Admin> findByEmail(String email);
     AdminResponseDTO updateAdminInfo(String username, AdminUpdateDTO adminDTO);
     List<AdminResponseDTO> searchAdmins(String username, String fullname, Roles role);
     AdminResponseDTO updateAdminRole(String username, Roles newRole, String currentUsername);

@@ -26,6 +26,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -81,6 +82,11 @@ public class AdminService implements IAdminService {
         return adminRepository.findByUsername(username)
                 .map(adminMapper::toAdminResponseDTO)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin not found with username: " + username));
+    }
+
+    @Override
+    public Optional<Admin> findByEmail(String email) {
+        return adminRepository.findByEmail(email);
     }
 
     @Override

@@ -7,7 +7,9 @@ import com.example.be_phela.model.Customer;
 import com.example.be_phela.repository.AdminRepository;
 import com.example.be_phela.repository.ChatMessageRepository;
 import com.example.be_phela.repository.CustomerRepository;
+import com.example.be_phela.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -16,7 +18,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -30,6 +36,20 @@ public class ChatController {
     private final ChatMessageRepository chatMessageRepository;
     private final CustomerRepository customerRepository;
     private final AdminRepository adminRepository;
+    private final FileStorageService fileStorageService;
+
+    @PostMapping("/api/chat/uploadImage")
+    public ResponseEntity<String> uploadChatImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = fileStorageService.storeChatImage(file);
+            if (imageUrl != null) {
+                return ResponseEntity.ok(imageUrl);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to upload image.");
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error uploading image: " + e.getMessage());
+        }
+    }
 
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(@Payload ChatMessage chatMessage, Principal principal) {

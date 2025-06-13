@@ -9,7 +9,7 @@ import com.example.be_phela.interService.ICartService;
 import com.example.be_phela.model.*;
 import com.example.be_phela.model.enums.DiscountType;
 import com.example.be_phela.model.enums.PromotionStatus;
-import com.example.be_phela.repository.*;
+import com.example.be_phela.repository.*; //
 import com.example.be_phela.utils.DistanceCalculator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +44,10 @@ public class CartService implements ICartService {
 
     @Transactional
     public Cart createCartForCustomer(String customerId) {
-        if (cartRepository.existsByCustomer_CustomerId(customerId)) {
-            throw new RuntimeException("Cart already exists for customer: " + customerId);
+        Optional<Cart> existingCart = cartRepository.findByCustomer_CustomerId(customerId);
+        if (existingCart.isPresent()) {
+            log.warn("Cart already exists for customer: {}. Returning existing cart.", customerId);
+            return existingCart.get(); // Trả về giỏ hàng đã tồn tại
         }
 
         Customer customer = customerRepository.findById(customerId)
@@ -67,7 +69,7 @@ public class CartService implements ICartService {
                 .build();
 
         log.info("Creating cart for customer: {}", customerId);
-        return cartRepository.save(cart);
+        return cartRepository.save(cart); //
     }
 
     @Transactional
@@ -93,13 +95,13 @@ public class CartService implements ICartService {
         }
 
         log.info("Synchronizing address and branch for cart of customer: {}", customerId);
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
     }
 
     @Transactional
     @Override
     public CartResponseDTO getCartByCustomerId(String customerId) {
-        Cart cart = cartRepository.findByCustomer_CustomerId(customerId)
+        Cart cart = cartRepository.findByCustomer_CustomerId(customerId) //
                 .orElseThrow(() -> new RuntimeException("Cart not found for customer: " + customerId));
 
         Address defaultAddress = addressRepository.findByCustomer_CustomerIdAndIsDefaultTrue(customerId)
@@ -111,16 +113,14 @@ public class CartService implements ICartService {
                 throw new RuntimeException("No valid branch found for the address");
             }
             cart.setBranch(nearestBranch.get());
-            cartRepository.save(cart);
+            cartRepository.save(cart); //
         } else if (defaultAddress == null && cart.getAddress() != null) {
             cart.setAddress(null);
             cart.setBranch(null);
-            cartRepository.save(cart);
+            cartRepository.save(cart); //
         }
 
-        // CHANGE START: Refactored to use the new centralized DTO builder method
         return buildCartResponseDTO(cart);
-        // CHANGE END
     }
 
     @Override
@@ -132,7 +132,7 @@ public class CartService implements ICartService {
         cart.getPromotionCarts().clear(); // Also clear promotions when clearing items
         cart.setTotalAmount(0.0);
         log.info("Cleared items and promotions from cart: {}", cartId);
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
     }
 
     @Override
@@ -175,7 +175,7 @@ public class CartService implements ICartService {
         cart.setTotalAmount(calculateCartTotalFromItems(cart));
         reapplyAllPromotions(cart); // Re-evaluate promotions after cart total changes
         log.info("Added/Updated item in cart: {}. Product: {}, Quantity: {}", cartId, cartItemDTO.getProductId(), cartItemDTO.getQuantity());
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
         return cartItem;
     }
 
@@ -194,13 +194,12 @@ public class CartService implements ICartService {
         cart.setTotalAmount(calculateCartTotalFromItems(cart));
         reapplyAllPromotions(cart); // Re-evaluate promotions after cart total changes
         log.info("Removed item from cart: {}. Product: {}", cartId, productId);
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
     }
 
-    // CHANGE START: Modified shipping fee calculation to return a whole number
     private double calculateShippingFee(Cart cart, double distance) {
         double totalAmount = calculateCartTotalFromItems(cart);
-        if (totalAmount >= FREE_SHIPPING_THRESHOLD) {
+        if (totalAmount >= FREE_SHIPPING_THRESHOLD) { //
             return 0.0;
         }
 
@@ -210,13 +209,11 @@ public class CartService implements ICartService {
         if (address == null || branch == null ||
                 address.getLatitude() == null || address.getLongitude() == null ||
                 branch.getLatitude() == null || branch.getLongitude() == null) {
-            return BASE_SHIPPING_FEE;
+            return BASE_SHIPPING_FEE; //
         }
 
-        // Return the fee as a whole number (rounded down)
-        return Math.floor(BASE_SHIPPING_FEE + (distance * FEE_PER_KM));
+        return Math.floor(BASE_SHIPPING_FEE + (distance * FEE_PER_KM)); //
     }
-    // CHANGE END
 
     @Override
     @Transactional
@@ -259,7 +256,7 @@ public class CartService implements ICartService {
                 .build();
         cart.getPromotionCarts().add(promotionCart);
 
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
         log.info("Promotion {} applied to cart {} with discount {}", promotionCode, cartId, discount);
     }
 
@@ -275,19 +272,18 @@ public class CartService implements ICartService {
                 .orElseThrow(() -> new RuntimeException("Promotion with id " + promotionId + " not found in cart"));
 
         cart.getPromotionCarts().remove(itemToRemove);
-        // No need to recalculate total amount, just save the change
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
     }
 
     private double calculateDiscountAmount(Promotion promotion, double cartTotal) {
-        if (promotion.getDiscountType() == DiscountType.PERCENTAGE) {
+        if (promotion.getDiscountType() == DiscountType.PERCENTAGE) { //
             double discount = cartTotal * (promotion.getDiscountValue() / 100);
             if (promotion.getMaxDiscountAmount() != null) {
                 return Math.min(discount, promotion.getMaxDiscountAmount());
             }
             return discount;
         }
-        return promotion.getDiscountValue();
+        return promotion.getDiscountValue(); //
     }
 
     // Helper method to re-evaluate all applied promotions
@@ -383,7 +379,7 @@ public class CartService implements ICartService {
         }
 
         log.info("Updated address {} for cart {}", addressId, cartId);
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
     }
 
     @Override
@@ -396,7 +392,7 @@ public class CartService implements ICartService {
 
         cart.setBranch(branch);
         log.info("Updated branch {} for cart {}", branchCode, cartId);
-        cartRepository.save(cart);
+        cartRepository.save(cart); //
     }
 
     @Override
@@ -404,18 +400,14 @@ public class CartService implements ICartService {
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy giỏ hàng với ID: " + cartId));
 
-        // CHANGE START: Refactored to use the new centralized DTO builder method
         return buildCartResponseDTO(cart);
-        // CHANGE END
     }
 
-    // CHANGE START: New private method to build CartResponseDTO consistently
     private CartResponseDTO buildCartResponseDTO(Cart cart) {
         double totalAmount = calculateCartTotalFromItems(cart);
 
-        // Recalculate promotions to ensure they are valid with the current cart total
-        reapplyAllPromotions(cart);
-        cartRepository.save(cart); // Save changes from reapplying promotions
+        reapplyAllPromotions(cart); //
+        cartRepository.save(cart); //
 
         double distance = 0.0;
         if (cart.getAddress() != null && cart.getBranch() != null &&
@@ -427,7 +419,7 @@ public class CartService implements ICartService {
             );
         }
 
-        double shippingFee = calculateShippingFee(cart, distance);
+        double shippingFee = calculateShippingFee(cart, distance); //
         double discount = cart.getPromotionCarts().stream()
                 .mapToDouble(PromotionCart::getDiscountAmount)
                 .sum();
@@ -494,7 +486,7 @@ public class CartService implements ICartService {
                                 .status(pc.getPromotion().getStatus())
                                 .build())
                         .collect(Collectors.toList()))
-                .distance(distance) // Set the calculated distance
+                .distance(distance)
                 .totalAmount(totalAmount)
                 .shippingFee(shippingFee)
                 .finalAmount(finalAmount)

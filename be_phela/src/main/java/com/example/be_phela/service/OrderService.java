@@ -327,43 +327,4 @@ public class OrderService implements IOrderService {
         return customerMapper.toCustomerResponseDTO(customer);
     }
 
-//    @Override
-//    @Transactional(readOnly = true)
-//    public RevenueReportDTO getRevenueAndOrderReport(String period) {
-//        LocalDateTime now = LocalDateTime.now();
-//        LocalDateTime startDate = calculateStartDate(period);
-//
-//        List<Object[]> results = orderRepository.findRevenueAndOrderCountByDateRange(startDate, now, OrderStatus.DELIVERED);
-//
-//        List<RevenueReportDTO.DailyData> dailyData = results.stream()
-//                .map(r -> RevenueReportDTO.DailyData.builder()
-//                        .date(((Date) r[0]).toLocalDate().toString())
-//                        .revenue(r[1] != null ? ((Number) r[1]).doubleValue() : 0.0)
-//                        .orderCount(r[2] != null ? ((Number) r[2]).longValue() : 0L)
-//                        .build())
-//                .collect(Collectors.toList());
-//
-//        double totalRevenue = dailyData.stream().mapToDouble(RevenueReportDTO.DailyData::getRevenue).sum();
-//        long totalOrders = dailyData.stream().mapToLong(RevenueReportDTO.DailyData::getOrderCount).sum();
-//
-//        return RevenueReportDTO.builder()
-//                .totalRevenue(totalRevenue)
-//                .totalOrders(totalOrders)
-//                .dailyData(dailyData)
-//                .build();
-//    }
-
-//    private LocalDateTime calculateStartDate(String period) {
-//        LocalDateTime now = LocalDateTime.now();
-//        switch (period.toLowerCase()) {
-//            case "week": return now.with(DayOfWeek.MONDAY).with(LocalTime.MIN);
-//            case "month": return now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN);
-//            case "quarter":
-//                int firstMonthOfQuarter = ((now.getMonthValue() - 1) / 3) * 3 + 1;
-//                return LocalDateTime.of(now.getYear(), firstMonthOfQuarter, 1, 0, 0);
-//            case "year": return now.with(TemporalAdjusters.firstDayOfYear()).with(LocalTime.MIN);
-//            default: return now.with(LocalTime.MIN);
-//        }
-//    }
-
 }

@@ -7,8 +7,10 @@ import com.example.be_phela.dto.response.AuthenticationResponse;
 import com.example.be_phela.mapper.AdminMapperImpl;
 import com.example.be_phela.model.Admin;
 import com.example.be_phela.model.Customer;
+import com.example.be_phela.model.PasswordResetToken;
 import com.example.be_phela.model.VerificationToken;
 import com.example.be_phela.model.enums.Roles;
+import com.example.be_phela.repository.PasswordResetTokenRepository;
 import com.example.be_phela.repository.VerificationTokenRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -26,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Random;
 import java.util.UUID;
 
 @Slf4j
@@ -46,6 +50,8 @@ public class AuthenticationService {
     final AuthenticationManager authenticationManager;
     final VerificationTokenRepository verificationTokenRepository;
     final EmailService emailService;
+    final PasswordResetTokenRepository passwordResetTokenRepository;
+    final PasswordEncoder passwordEncoder;
 
     @Value("${jwt.signer-key}")
     @NonFinal
@@ -190,5 +196,103 @@ public class AuthenticationService {
                 .findFirst()
                 .map(grantedAuthority -> grantedAuthority.getAuthority().replace("ROLE_", ""))
                 .orElse("UNKNOWN");
+    }
+
+    @Transactional
+    public void sendPasswordResetOtp(String email) throws MessagingException {
+        // Find customer by email
+        Customer customer = customerService.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email: " + email));
+
+        // Generate OTP
+        String otp = generateOtp();
+        log.info("Generated OTP for {}: {}", email, otp);
+
+        // Delete any existing token for this email
+        passwordResetTokenRepository.deleteByEmail(email);
+
+        // Create and save new PasswordResetToken
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .token(otp)
+                .expiryDate(LocalDateTime.now().plusMinutes(10)) // OTP expires in 10 minutes
+                .build();
+        passwordResetTokenRepository.save(token);
+
+        // Send OTP email
+        emailService.sendOtpEmail(email, otp);
+    }
+
+    @Transactional
+    public void verifyOtpAndResetPassword(String email, String otp, String newPassword) {
+        PasswordResetToken token = passwordResetTokenRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn."));
+
+        if (!token.getToken().equals(otp)) {
+            throw new RuntimeException("Mã OTP không đúng.");
+        }
+        if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
+            passwordResetTokenRepository.delete(token); // Clean up expired token
+            throw new RuntimeException("Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.");
+        }
+
+        // Find customer by email and update password
+        Customer customer = customerService.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email: " + email));
+
+        customer.setPassword(passwordEncoder.encode(newPassword));
+        customerService.saveCustomer(customer); // This save will trigger the update
+
+        // Delete the token after successful password reset
+        passwordResetTokenRepository.delete(token);
+    }
+
+    // Phương thức gửi OTP cho Admin
+    @Transactional
+    public void sendPasswordResetOtpAdmin(String email) throws MessagingException {
+        Admin admin = adminService.findByEmail(email) // Sử dụng adminService
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản quản trị viên với email: " + email));
+
+        String otp = generateOtp();
+        log.info("Generated OTP for admin {}: {}", email, otp);
+
+        passwordResetTokenRepository.deleteByEmail(email); // Delete any existing token for this email
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .token(otp)
+                .expiryDate(LocalDateTime.now().plusMinutes(10)) // OTP expires in 10 minutes
+                .build();
+        passwordResetTokenRepository.save(token);
+
+        emailService.sendOtpEmail(email, otp);
+    }
+
+    // Phương thức xác nhận OTP và đặt lại mật khẩu cho Admin
+    @Transactional
+    public void verifyOtpAndResetPasswordAdmin(String email, String otp, String newPassword) {
+        PasswordResetToken token = passwordResetTokenRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn."));
+
+        if (!token.getToken().equals(otp)) {
+            throw new RuntimeException("Mã OTP không đúng.");
+        }
+        if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
+            passwordResetTokenRepository.delete(token);
+            throw new RuntimeException("Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.");
+        }
+
+        Admin admin = adminService.findByEmail(email) // Sử dụng adminService
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản quản trị viên với email: " + email));
+
+        admin.setPassword(passwordEncoder.encode(newPassword));
+        adminService.saveAdmin(admin); // Sử dụng saveAdmin từ adminService
+
+        passwordResetTokenRepository.delete(token);
+    }
+
+    private String generateOtp() {
+        Random random = new Random();
+        int otp = 100000 + random.nextInt(900000); // Generates a 6-digit OTP
+        return String.valueOf(otp);
     }
 }

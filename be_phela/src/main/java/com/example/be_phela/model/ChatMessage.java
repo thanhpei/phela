@@ -20,4 +20,5 @@ public class ChatMessage {
     private String recipientId; // adminId hoặc customerId
     private String senderName;
     private LocalDateTime timestamp;
+    private String imageUrl;
 }

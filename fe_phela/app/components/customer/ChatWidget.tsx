@@ -1,15 +1,19 @@
+// src/main/java/com/example/fe_phela/src/components/chat/ChatWidget.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { getChatHistory } from '~/services/chatServices'; 
+import { getChatHistory } from '~/services/chatServices';
 import { useAuth, isCustomerUser } from '~/AuthContext';
 
 interface ChatMessage {
     id?: string;
-    content: string;
+    content?: string;
     senderId: string;
     recipientId: string;
     senderName: string;
+    timestamp?: string;
+    imageUrl?: string;
+    tempId?: string;
 }
 
 const ChatWidget = () => {
@@ -28,7 +32,7 @@ const ChatWidget = () => {
     }, []);
 
     const connect = useCallback((currentCustomerId: string) => {
-        if (stompClientRef.current) return;
+        if (stompClientRef.current && stompClientRef.current.connected) return;
 
         const client = new Client({
             webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
@@ -36,12 +40,47 @@ const ChatWidget = () => {
                 console.log('Connected to chat server!');
                 client.subscribe(`/topic/chat/${currentCustomerId}`, (message) => {
                     const receivedMessage: ChatMessage = JSON.parse(message.body);
-                    
+                    console.log('Received message:', receivedMessage);
+
                     setMessages((prev) => {
-                        if (prev.some(msg => msg.id === receivedMessage.id)) return prev;
+                        const tempMessageIndex = prev.findIndex(msg => 
+                            msg.tempId && 
+                            msg.senderId === receivedMessage.senderId &&
+                            msg.recipientId === receivedMessage.recipientId &&
+                            (
+                                (msg.imageUrl && receivedMessage.imageUrl && msg.imageUrl.includes('blob:')) ||
+                                (msg.content === receivedMessage.content)
+                            )
+                        );
+
+                        if (tempMessageIndex > -1) {
+                            const newMessages = [...prev];
+                            if (newMessages[tempMessageIndex].imageUrl?.startsWith('blob:')) {
+                                URL.revokeObjectURL(newMessages[tempMessageIndex].imageUrl!);
+                            }
+                            newMessages[tempMessageIndex] = {
+                                ...receivedMessage,
+                                tempId: undefined
+                            };
+                            return newMessages;
+                        }
+
+                        // Kiểm tra trùng lặp với message đã có (dựa trên ID thật)
+                        const existingMessageIndex = prev.findIndex(msg => 
+                            msg.id === receivedMessage.id && receivedMessage.id
+                        );
+                        
+                        if (existingMessageIndex > -1) {
+                            return prev;
+                        }
+
                         return [...prev, receivedMessage];
                     });
                 });
+            },
+            onStompError: (frame) => {
+                console.error('Broker reported error: ' + frame.headers['message']);
+                console.error('Additional details: ' + frame.body);
             },
             reconnectDelay: 5000,
         });
@@ -58,6 +97,7 @@ const ChatWidget = () => {
                     setMessages(history);
                 } catch (error) {
                     console.error("Failed to load chat history", error);
+                    setMessages([]);
                 }
                 connect(customerId);
             };
@@ -65,7 +105,7 @@ const ChatWidget = () => {
         } else {
             disconnect();
         }
-        
+
         return () => disconnect();
     }, [isOpen, user, connect, disconnect]);
 
@@ -74,37 +114,138 @@ const ChatWidget = () => {
     }, [messages]);
 
     if (!user || !isCustomerUser(user)) {
-        return null; 
+        return null;
     }
-    
+
     const { customerId, username: customerName } = user;
 
     const handleSendMessage = () => {
-        if (inputValue.trim() && stompClientRef.current?.connected) {
-            const tempId = `temp_${Date.now()}`;
-            const chatMessage: ChatMessage = {
-                id: tempId,
-                content: inputValue,
-                senderId: customerId,
-                senderName: customerName,
-                recipientId: 'ADMIN',
-            };
-            
-            setMessages((prev) => [...prev, chatMessage]);
+        if (!stompClientRef.current?.connected) {
+            console.warn("STOMP client not connected.");
+            return;
+        }
 
-            stompClientRef.current.publish({
-                destination: '/app/chat.sendMessage',
-                body: JSON.stringify({ ...chatMessage, id: null }),
+        if (!inputValue.trim()) {
+            return;
+        }
+
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const chatMessage: ChatMessage = {
+            content: inputValue.trim(),
+            senderId: customerId,
+            senderName: customerName,
+            recipientId: 'ADMIN',
+            tempId: tempId,
+            timestamp: new Date().toISOString()
+        };
+
+        setMessages((prev) => [...prev, chatMessage]);
+        const messageToSend = {
+            content: chatMessage.content,
+            senderId: chatMessage.senderId,
+            senderName: chatMessage.senderName,
+            recipientId: chatMessage.recipientId
+        };
+
+        stompClientRef.current.publish({
+            destination: '/app/chat.sendMessage',
+            body: JSON.stringify(messageToSend),
+        });
+        setInputValue('');
+    };
+
+    const handleImageSend = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!user || !isCustomerUser(user)) {
+            console.error("User not authenticated or not a customer.");
+            return;
+        }
+
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const tempImageUrl = URL.createObjectURL(file);
+    
+        const tempMessage: ChatMessage = {
+            tempId: tempId,
+            content: "",
+            senderId: customerId,
+            senderName: customerName,
+            recipientId: 'ADMIN',
+            imageUrl: tempImageUrl,
+            timestamp: new Date().toISOString(),
+        };
+        
+        setMessages((prev) => [...prev, tempMessage]);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('http://localhost:8080/api/chat/uploadImage', {
+                method: 'POST',
+                body: formData,
             });
-            setInputValue('');
+
+            if (!response.ok) {
+                throw new Error('Failed to upload image');
+            }
+
+            const imageUrl = await response.text();
+            console.log("Uploaded image URL:", imageUrl);
+
+            if (stompClientRef.current?.connected) {
+                console.log("Sending image message via STOMP");
+                const chatMessage = {
+                    content: "",
+                    senderId: customerId,
+                    senderName: customerName,
+                    recipientId: 'ADMIN',
+                    imageUrl: imageUrl
+                };
+
+                stompClientRef.current.publish({
+                    destination: '/app/chat.sendMessage',
+                    body: JSON.stringify(chatMessage),
+                });
+                
+                console.log("Image message sent successfully");
+            } else {
+                console.error("STOMP client not connected");
+
+                setMessages((prev) => prev.map(msg =>
+                    msg.tempId === tempId 
+                        ? { 
+                            ...msg, 
+                            content: "Lỗi: Không kết nối được chat server.",
+                            imageUrl: undefined,
+                            senderName: "Hệ thống" 
+                          } 
+                        : msg
+                ));
+            }
+        } catch (error) {
+            console.error("Error uploading image:", error);
+            setMessages((prev) => prev.map(msg =>
+                msg.tempId === tempId 
+                    ? { 
+                        ...msg, 
+                        content: "Lỗi: Không thể tải ảnh lên.",
+                        imageUrl: undefined,
+                        senderName: "Hệ thống" 
+                      } 
+                    : msg
+            ));
+        } finally {
+            event.target.value = '';
         }
     };
-    
+
     return (
         <>
             {!isOpen ? (
-                <button 
-                    onClick={() => setIsOpen(true)} 
+                <button
+                    onClick={() => setIsOpen(true)}
                     className="fixed bottom-5 right-5 bg-[#d4a373] text-white p-4 rounded-full shadow-lg z-50 hover:shadow-xl transition-all duration-300 hover:scale-110"
                     style={{ boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
                 >
@@ -121,8 +262,8 @@ const ChatWidget = () => {
                             </svg>
                             <h3 className="font-bold text-lg">Hỗ trợ trực tuyến</h3>
                         </div>
-                        <button 
-                            onClick={() => setIsOpen(false)} 
+                        <button
+                            onClick={() => setIsOpen(false)}
                             className="text-white hover:text-gray-200 transition-colors duration-200"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -132,10 +273,31 @@ const ChatWidget = () => {
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
                         {messages.map((msg, index) => (
-                            <div key={msg.id || index} className={`mb-4 flex ${msg.senderId === customerId ? 'justify-end' : 'justify-start'}`}>
+                            <div key={msg.id || msg.tempId || index} className={`mb-4 flex ${msg.senderId === customerId ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs rounded-lg p-3 ${msg.senderId === customerId ? 'bg-[#d4a373] text-white rounded-tr-none' : 'bg-gray-200 text-gray-800 rounded-tl-none'}`}>
                                     <p className="text-xs font-semibold mb-1">{msg.senderName}</p>
-                                    <p className="text-sm break-words">{msg.content}</p>
+                                    {msg.content && <p className="text-sm break-words">{msg.content}</p>}
+                                    {msg.imageUrl && (
+                                        <div className="mt-2">
+                                            <img 
+                                                src={msg.imageUrl} 
+                                                alt="Chat attachment" 
+                                                className="max-w-full h-auto rounded-md"
+                                                onError={(e) => {
+                                                    console.error("Failed to load image:", msg.imageUrl);
+                                                    e.currentTarget.style.display = 'none';
+                                                }}
+                                            />
+                                            {msg.tempId && (
+                                                <div className="text-xs opacity-70 mt-1">Đang gửi...</div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {msg.timestamp && (
+                                        <p className="text-xs opacity-70 mt-1">
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -144,6 +306,22 @@ const ChatWidget = () => {
                     <div className="p-3 border-t border-gray-200 bg-white">
                         <div className="flex items-center space-x-2">
                             <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageSend}
+                                style={{ display: 'none' }}
+                                id="chat-image-upload-customer"
+                            />
+                            <button
+                                onClick={() => document.getElementById('chat-image-upload-customer')?.click()}
+                                className="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                                title="Gửi ảnh"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                            <input
                                 type="text"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
@@ -151,8 +329,8 @@ const ChatWidget = () => {
                                 className="flex-1 border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#d4a373] focus:border-transparent"
                                 placeholder="Nhập tin nhắn..."
                             />
-                            <button 
-                                onClick={handleSendMessage} 
+                            <button
+                                onClick={handleSendMessage}
                                 className="bg-[#d4a373] text-white p-2 rounded-lg hover:bg-[#c19266] transition-colors duration-200"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

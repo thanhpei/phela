@@ -1,9 +1,7 @@
 package com.example.be_phela.controller;
 
+import com.example.be_phela.dto.request.*;
 import com.example.be_phela.dto.response.ApiResponse;
-import com.example.be_phela.dto.request.AuthenticationRequest;
-import com.example.be_phela.dto.request.CustomerCreateDTO;
-import com.example.be_phela.dto.request.AdminCreateDTO;
 import com.example.be_phela.dto.response.AuthenticationResponse;
 import com.example.be_phela.service.AuthenticationService;
 import jakarta.mail.MessagingException;
@@ -114,6 +112,67 @@ public class AuthenticationController {
             return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", "Lỗi hệ thống", null);
         }
     }
+
+    // New endpoint to request OTP for password reset
+    @PostMapping("/forgot-password/send-otp")
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> sendOtpForPasswordReset(@Valid @RequestBody ForgotPasswordRequest request) { // Add @Valid
+        try {
+            authenticationService.sendPasswordResetOtp(request.getEmail());
+            return buildResponse(HttpStatus.OK, "success", "Mã OTP đã được gửi đến email của bạn.", null);
+        } catch (RuntimeException | MessagingException e) {
+            log.error("Failed to send OTP for password reset to {}: {}", request.getEmail(), e.getMessage());
+            return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
+        } catch (Exception e) {
+            log.error("An unexpected error occurred while sending OTP for password reset to {}", request.getEmail(), e);
+            return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", "Lỗi hệ thống khi gửi OTP.", null);
+        }
+    }
+
+    // New endpoint to verify OTP and reset password
+    @PostMapping("/forgot-password/reset")
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> verifyOtpAndResetPassword(@Valid @RequestBody VerifyOtpAndResetPasswordRequest request) { // Add @Valid
+        try {
+            authenticationService.verifyOtpAndResetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
+            return buildResponse(HttpStatus.OK, "success", "Mật khẩu đã được đặt lại thành công.", null);
+        } catch (RuntimeException e) {
+            log.error("Failed to reset password: {}", e.getMessage());
+            return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
+        } catch (Exception e) {
+            log.error("An unexpected error occurred while resetting password for {}", request.getEmail(), e);
+            return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", "Lỗi hệ thống khi đặt lại mật khẩu.", null);
+        }
+    }
+
+    // Endpoint để yêu cầu OTP cho đặt lại mật khẩu Admin
+    @PostMapping("/admin/forgot-password/send-otp")
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> sendOtpForAdminPasswordReset(@RequestBody ForgotPasswordRequest request) {
+        try {
+            authenticationService.sendPasswordResetOtpAdmin(request.getEmail());
+            return buildResponse(HttpStatus.OK, "success", "Mã OTP đã được gửi đến email quản trị viên của bạn.", null);
+        } catch (RuntimeException | MessagingException e) {
+            log.error("Failed to send OTP for admin password reset to {}: {}", request.getEmail(), e.getMessage());
+            return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
+        } catch (Exception e) {
+            log.error("An unexpected error occurred while sending OTP for admin password reset to {}", request.getEmail(), e);
+            return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", "Lỗi hệ thống khi gửi OTP.", null);
+        }
+    }
+
+    // Endpoint để xác nhận OTP và đặt lại mật khẩu Admin
+    @PostMapping("/admin/forgot-password/reset")
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> verifyOtpAndResetAdminPassword(@RequestBody VerifyOtpAndResetPasswordRequest request) {
+        try {
+            authenticationService.verifyOtpAndResetPasswordAdmin(request.getEmail(), request.getOtp(), request.getNewPassword());
+            return buildResponse(HttpStatus.OK, "success", "Mật khẩu quản trị viên đã được đặt lại thành công.", null);
+        } catch (RuntimeException e) {
+            log.error("Failed to reset admin password: {}", e.getMessage());
+            return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
+        } catch (Exception e) {
+            log.error("An unexpected error occurred while resetting admin password for {}", request.getEmail(), e);
+            return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", "Lỗi hệ thống khi đặt lại mật khẩu.", null);
+        }
+    }
+
 
     // ==== PRIVATE HELPER METHODS ====
 

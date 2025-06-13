@@ -426,25 +426,27 @@ const Cart = () => {
                           <div className="flex items-center">
                             <span className="text-sm mr-2">Đường:</span>
                             <select
-                              value={item.note.includes('50% đường') ? '50' : item.note.includes('70% đường') ? '70' : '100'}
+                              // --- SỬA LỖI Ở ĐÂY: Thêm '?' sau item.note ---
+                              value={item.note?.includes('50% đường') ? '50' : item.note?.includes('70% đường') ? '70' : '100'}
                               onChange={(e) => updateNote(item.cartItemId, 'đường', e.target.value)}
                               className="text-sm p-1 border rounded"
                             >
-                              <option value="50">50%</option>
-                              <option value="70">70%</option>
                               <option value="100">100%</option>
+                              <option value="70">70%</option>
+                              <option value="50">50%</option>
                             </select>
                           </div>
                           <div className="flex items-center">
                             <span className="text-sm mr-2">Đá:</span>
                             <select
-                              value={item.note.includes('50% đá') ? '50' : item.note.includes('70% đá') ? '70' : '100'}
+                              // --- SỬA LỖI Ở ĐÂY: Thêm '?' sau item.note ---
+                              value={item.note?.includes('50% đá') ? '50' : item.note?.includes('70% đá') ? '70' : '100'}
                               onChange={(e) => updateNote(item.cartItemId, 'đá', e.target.value)}
                               className="text-sm p-1 border rounded"
                             >
-                              <option value="50">50%</option>
-                              <option value="70">70%</option>
                               <option value="100">100%</option>
+                              <option value="70">70%</option>
+                              <option value="50">50%</option>
                             </select>
                           </div>
                         </div>
