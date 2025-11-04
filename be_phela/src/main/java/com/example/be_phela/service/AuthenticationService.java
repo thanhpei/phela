@@ -4,7 +4,6 @@ import com.example.be_phela.dto.request.AuthenticationRequest;
 import com.example.be_phela.dto.request.AdminCreateDTO;
 import com.example.be_phela.dto.request.CustomerCreateDTO;
 import com.example.be_phela.dto.response.AuthenticationResponse;
-import com.example.be_phela.mapper.AdminMapperImpl;
 import com.example.be_phela.model.Admin;
 import com.example.be_phela.model.Customer;
 import com.example.be_phela.model.PasswordResetToken;
@@ -63,7 +62,7 @@ public class AuthenticationService {
 
     // Đăng ký admin
     @Transactional(rollbackFor = Exception.class)
-    public AuthenticationResponse registerAdmin(AdminCreateDTO request, String clientIp) throws MessagingException {
+    public AuthenticationResponse registerAdmin(AdminCreateDTO request, String clientIp){
         // Tạo Admin
         Admin admin = adminService.buildAdmin(request, clientIp);
 
@@ -76,13 +75,15 @@ public class AuthenticationService {
                 .expiryDate(LocalDateTime.now().plusHours(24)) // Hết hạn sau 24 giờ
                 .build();
 
-        // Gửi email xác nhận
-        try {
-            emailService.sendVerificationEmail(admin.getEmail(), token);
-        } catch (MessagingException e) {
-            log.error("Failed to send verification email to {}: {}", admin.getEmail(), e.getMessage());
-            throw new MessagingException("Không thể gửi email xác nhận: " + e.getMessage(), e);
-        }
+        emailService.sendVerificationEmail(admin.getEmail(), verificationToken.getToken());
+
+//        // Gửi email xác nhận
+//        try {
+//            emailService.sendVerificationEmail(admin.getEmail(), token);
+//        } catch (MessagingException e) {
+//            log.error("Failed to send verification email to {}: {}", admin.getEmail(), e.getMessage());
+//            throw new MessagingException("Không thể gửi email xác nhận: " + e.getMessage(), e);
+//        }
 
         // Nếu gửi email thành công, lưu admin và token vào database
         adminService.saveAdmin(admin);
@@ -93,7 +94,7 @@ public class AuthenticationService {
 
     // Đăng ký customer
     @Transactional(rollbackFor = Exception.class)
-    public AuthenticationResponse registerCustomer(CustomerCreateDTO request) throws MessagingException {
+    public AuthenticationResponse registerCustomer(CustomerCreateDTO request){
         // Tạo Customer (lưu vào database)
         Customer customer = customerService.buildCustomer(request);
 
@@ -106,14 +107,15 @@ public class AuthenticationService {
                 .expiryDate(LocalDateTime.now().plusHours(24)) // Hết hạn sau 24 giờ
                 .build();
 
+        emailService.sendVerificationEmail(customer.getEmail(), verificationToken.getToken());
 
         // Gửi email xác nhận
-        try {
-            emailService.sendVerificationEmail(customer.getEmail(), token);
-        } catch (MessagingException e) {
-            log.error("Failed to send verification email to {}: {}", customer.getEmail(), e.getMessage());
-            throw new MessagingException("Không thể gửi email xác nhận: " + e.getMessage(), e);
-        }
+//        try {
+//            emailService.sendVerificationEmail(customer.getEmail(), token);
+//        } catch (MessagingException e) {
+//            log.error("Failed to send verification email to {}: {}", customer.getEmail(), e.getMessage());
+//            throw new MessagingException("Không thể gửi email xác nhận: " + e.getMessage(), e);
+//        }
 
         customerService.saveCustomer(customer);
         verificationTokenRepository.save(verificationToken);
@@ -148,7 +150,7 @@ public class AuthenticationService {
         String username = userDetails.getUsername();
 
         if (userDetails instanceof Customer customer) {
-            return new AuthenticationResponse(jwtToken, username, "CUSTOMER", expiresAt);
+            return new AuthenticationResponse(jwtToken, username, customer.getRole().name(), expiresAt);
         } else if (userDetails instanceof Admin admin) {
             Roles role = admin.getRole();
             return new AuthenticationResponse(jwtToken, username, role.name(), expiresAt);
@@ -199,7 +201,7 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public void sendPasswordResetOtp(String email) throws MessagingException {
+    public void sendPasswordResetOtp(String email){
         // Find customer by email
         Customer customer = customerService.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email: " + email));
@@ -249,7 +251,7 @@ public class AuthenticationService {
 
     // Phương thức gửi OTP cho Admin
     @Transactional
-    public void sendPasswordResetOtpAdmin(String email) throws MessagingException {
+    public void sendPasswordResetOtpAdmin(String email){
         Admin admin = adminService.findByEmail(email) // Sử dụng adminService
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản quản trị viên với email: " + email));
 

@@ -43,8 +43,10 @@ const Register = () => {
             }, 3000);
 
         } catch (err: any) {
-            // --- HIỂN THỊ LỖI CỤ THỂ TỪ BACKEND ---
-            const errorMessage = err.response?.data?.message || 'Không thể đăng ký, vui lòng thử lại sau!';
+            // Handle structured error response from backend
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Không thể đăng ký, vui lòng thử lại sau!';
             toast.error(errorMessage);
             console.error('Lỗi đăng ký:', err);
         } finally {

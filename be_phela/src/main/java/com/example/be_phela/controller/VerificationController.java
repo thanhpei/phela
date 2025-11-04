@@ -70,9 +70,11 @@ public class VerificationController {
     private <T> ResponseEntity<ApiResponse<T>> buildResponse(
             HttpStatus status, String statusText, String message, T data) {
         ApiResponse<T> apiResponse = ApiResponse.<T>builder()
+                .success("success".equals(statusText))
                 .status(statusText)
                 .message(message)
                 .data(data)
+                .timestamp(java.time.LocalDateTime.now())
                 .build();
         return new ResponseEntity<>(apiResponse, status);
     }

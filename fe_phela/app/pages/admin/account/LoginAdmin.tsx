@@ -5,6 +5,7 @@ import { useAuth } from "~/AuthContext"; //
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '~/config/axios';
+import { sendOtpForAdminPasswordReset, verifyOtpAndResetAdminPassword } from '~/services/authServices';
 
 const LoginAdmin = () => {
     const navigate = useNavigate();
@@ -33,7 +34,10 @@ const LoginAdmin = () => {
             toast.success('Đăng nhập thành công!');
             setTimeout(() => navigate('/admin/dashboard'), 1500);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Tài khoản hoặc mật khẩu không đúng!';
+            // Handle structured error response from backend
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Tài khoản hoặc mật khẩu không đúng!';
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -47,11 +51,13 @@ const LoginAdmin = () => {
         }
         setLoading(true);
         try {
-            await api.post('/auth/admin/forgot-password/send-otp', { email: forgotPasswordEmail });
+            await sendOtpForAdminPasswordReset(forgotPasswordEmail);
             toast.success("Mã OTP đã được gửi đến email quản trị viên của bạn.");
             setResetStage('otp'); // Move to OTP stage
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Gửi OTP thất bại.';
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Gửi OTP thất bại.';
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -69,7 +75,7 @@ const LoginAdmin = () => {
         }
         setLoading(true);
         try {
-            await api.post('/auth/admin/forgot-password/reset', {
+            await verifyOtpAndResetAdminPassword({
                 email: forgotPasswordEmail,
                 otp,
                 newPassword
@@ -80,7 +86,9 @@ const LoginAdmin = () => {
                 handleCloseForgotPassword();
             }, 3000);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Đặt lại mật khẩu thất bại.';
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Đặt lại mật khẩu thất bại.';
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -133,7 +141,6 @@ const LoginAdmin = () => {
                 {loading ? 'Đang đăng nhập...' : 'Login'}
             </button>
 
-            <p className="mt-4">or use your account</p>
 
             {/* Forgot Password Section for Admin */}
             {showForgotPassword && (

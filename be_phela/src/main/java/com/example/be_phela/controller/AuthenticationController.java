@@ -4,7 +4,7 @@ import com.example.be_phela.dto.request.*;
 import com.example.be_phela.dto.response.ApiResponse;
 import com.example.be_phela.dto.response.AuthenticationResponse;
 import com.example.be_phela.service.AuthenticationService;
-import jakarta.mail.MessagingException;
+// import jakarta.mail.MessagingException; // Dòng này không còn cần thiết nữa
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -34,16 +34,8 @@ public class AuthenticationController {
     @PostMapping("/customer/register")
     public ResponseEntity<ApiResponse<AuthenticationResponse>> registerCustomer(
             @Valid @RequestBody CustomerCreateDTO request) {
-        Supplier<AuthenticationResponse> registerSupplier = () -> {
-            try {
-                return authenticationService.registerCustomer(request);
-            } catch (MessagingException e) {
-
-                log.error("MessagingException during customer registration in lambda: {}", e.getMessage());
-                // Quan trọng: Ném RuntimeException để báo hiệu lỗi cho handleRegistration
-                throw new RuntimeException("Registration failed due to email sending issue: " + e.getMessage(), e);
-            }
-        };
+        // SỬA LỖI: Bỏ try-catch MessagingException không cần thiết
+        Supplier<AuthenticationResponse> registerSupplier = () -> authenticationService.registerCustomer(request);
 
         return handleRegistration(registerSupplier,
                 "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.");
@@ -53,19 +45,12 @@ public class AuthenticationController {
     public ResponseEntity<ApiResponse<AuthenticationResponse>> registerAdmin(
             @Valid @RequestBody AdminCreateDTO request,
             HttpServletRequest httpRequest) {
-//        return handleRegistration(() -> authenticationService.registerAdmin(request, getClientIp(httpRequest)),
-//                "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.");
+        // SỬA LỖI: Bỏ try-catch MessagingException không cần thiết
         Supplier<AuthenticationResponse> registerSupplier = () -> {
-            try {
-                String clientIp = getClientIp(httpRequest);
-                return authenticationService.registerAdmin(request, clientIp);
-            } catch (MessagingException e) {
-                log.error("MessagingException during admin registration in lambda: {}", e.getMessage());
-                // Ném RuntimeException để báo hiệu lỗi cho handleRegistration
-                throw new RuntimeException("Registration failed due to email sending issue: " + e.getMessage(), e);
-            }
+            String clientIp = getClientIp(httpRequest);
+            return authenticationService.registerAdmin(request, clientIp);
         };
-        return handleRegistration(registerSupplier, // Truyền Supplier đã xử lý exception
+        return handleRegistration(registerSupplier,
                 "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.");
     }
 
@@ -84,6 +69,12 @@ public class AuthenticationController {
             return buildResponse(HttpStatus.UNAUTHORIZED, "error", "Sai mật khẩu", null);
         } catch (IllegalStateException e) {
             log.error("Admin login failed: {}", e.getMessage());
+            return buildResponse(HttpStatus.FORBIDDEN, "error", e.getMessage(), null);
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            log.error("Admin login failed - account disabled: {}", e.getMessage());
+            return buildResponse(HttpStatus.FORBIDDEN, "error", e.getMessage(), null);
+        } catch (org.springframework.security.authentication.LockedException e) {
+            log.error("Admin login failed - account locked: {}", e.getMessage());
             return buildResponse(HttpStatus.FORBIDDEN, "error", e.getMessage(), null);
         } catch (Exception e) {
             log.error("Admin login failed for username: {}", request.getUsername(), e);
@@ -107,19 +98,24 @@ public class AuthenticationController {
         } catch (IllegalStateException e) {
             log.error("Customer login failed: {}", e.getMessage());
             return buildResponse(HttpStatus.FORBIDDEN, "error", e.getMessage(), null);
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            log.error("Customer login failed - account disabled: {}", e.getMessage());
+            return buildResponse(HttpStatus.FORBIDDEN, "error", e.getMessage(), null);
+        } catch (org.springframework.security.authentication.LockedException e) {
+            log.error("Customer login failed - account locked: {}", e.getMessage());
+            return buildResponse(HttpStatus.FORBIDDEN, "error", e.getMessage(), null);
         } catch (Exception e) {
             log.error("Customer login failed for username: {}", request.getUsername(), e);
             return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", "Lỗi hệ thống", null);
         }
     }
 
-    // New endpoint to request OTP for password reset
     @PostMapping("/forgot-password/send-otp")
-    public ResponseEntity<ApiResponse<AuthenticationResponse>> sendOtpForPasswordReset(@Valid @RequestBody ForgotPasswordRequest request) { // Add @Valid
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> sendOtpForPasswordReset(@Valid @RequestBody ForgotPasswordRequest request) {
         try {
             authenticationService.sendPasswordResetOtp(request.getEmail());
             return buildResponse(HttpStatus.OK, "success", "Mã OTP đã được gửi đến email của bạn.", null);
-        } catch (RuntimeException | MessagingException e) {
+        } catch (RuntimeException e) { // SỬA LỖI: Bỏ MessagingException
             log.error("Failed to send OTP for password reset to {}: {}", request.getEmail(), e.getMessage());
             return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
         } catch (Exception e) {
@@ -128,9 +124,8 @@ public class AuthenticationController {
         }
     }
 
-    // New endpoint to verify OTP and reset password
     @PostMapping("/forgot-password/reset")
-    public ResponseEntity<ApiResponse<AuthenticationResponse>> verifyOtpAndResetPassword(@Valid @RequestBody VerifyOtpAndResetPasswordRequest request) { // Add @Valid
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> verifyOtpAndResetPassword(@Valid @RequestBody VerifyOtpAndResetPasswordRequest request) {
         try {
             authenticationService.verifyOtpAndResetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
             return buildResponse(HttpStatus.OK, "success", "Mật khẩu đã được đặt lại thành công.", null);
@@ -143,13 +138,12 @@ public class AuthenticationController {
         }
     }
 
-    // Endpoint để yêu cầu OTP cho đặt lại mật khẩu Admin
     @PostMapping("/admin/forgot-password/send-otp")
     public ResponseEntity<ApiResponse<AuthenticationResponse>> sendOtpForAdminPasswordReset(@RequestBody ForgotPasswordRequest request) {
         try {
             authenticationService.sendPasswordResetOtpAdmin(request.getEmail());
             return buildResponse(HttpStatus.OK, "success", "Mã OTP đã được gửi đến email quản trị viên của bạn.", null);
-        } catch (RuntimeException | MessagingException e) {
+        } catch (RuntimeException e) { // SỬA LỖI: Bỏ MessagingException
             log.error("Failed to send OTP for admin password reset to {}: {}", request.getEmail(), e.getMessage());
             return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
         } catch (Exception e) {
@@ -158,7 +152,6 @@ public class AuthenticationController {
         }
     }
 
-    // Endpoint để xác nhận OTP và đặt lại mật khẩu Admin
     @PostMapping("/admin/forgot-password/reset")
     public ResponseEntity<ApiResponse<AuthenticationResponse>> verifyOtpAndResetAdminPassword(@RequestBody VerifyOtpAndResetPasswordRequest request) {
         try {
@@ -173,7 +166,6 @@ public class AuthenticationController {
         }
     }
 
-
     // ==== PRIVATE HELPER METHODS ====
 
     private ResponseEntity<ApiResponse<AuthenticationResponse>> handleRegistration(
@@ -186,9 +178,8 @@ public class AuthenticationController {
             return buildResponse(HttpStatus.BAD_REQUEST, "error", e.getMessage(), null);
         } catch (Exception e) {
             log.error("Registration failed: {}", e.getMessage(), e);
-            String errorMessage = e.getMessage().contains("Không thể gửi email xác nhận")
-                    ? e.getMessage()
-                    : "Registration failed: " + e.getMessage();
+            // RuntimeException từ EmailService sẽ được bắt ở đây
+            String errorMessage = "Registration failed: " + e.getMessage();
             return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "error", errorMessage, null);
         }
     }
@@ -196,9 +187,11 @@ public class AuthenticationController {
     private ResponseEntity<ApiResponse<AuthenticationResponse>> buildResponse(
             HttpStatus status, String statusText, String message, AuthenticationResponse data) {
         ApiResponse<AuthenticationResponse> apiResponse = ApiResponse.<AuthenticationResponse>builder()
+                .success("success".equals(statusText))
                 .status(statusText)
                 .message(message)
                 .data(data)
+                .timestamp(java.time.LocalDateTime.now())
                 .build();
         return new ResponseEntity<>(apiResponse, status);
     }

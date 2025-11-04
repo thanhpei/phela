@@ -13,14 +13,12 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-//                        .allowedOrigins("http://localhost:3000", "http://localhost:3001") // Cho phép rõ ràng nguồn gốc của frontend
-                        .allowedOrigins("*","http://localhost:3000", "http://localhost:3001")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH")
+                        .allowedOrigins("http://localhost:3000", "http://localhost:3001", "https://phela-customer-o8mp.onrender.com","https://phela-admin.onrender.com")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
-                        .exposedHeaders("Access-Control-Allow-Origin", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers")
-                        .allowCredentials(false)
+                        .allowCredentials(true)
                         .maxAge(3600);
-                System.out.println("CORS đã được cấu hình cho /auth/**");
+                System.out.println("CORS đã được cấu hình cho tất cả endpoints");
             }
         };
     }

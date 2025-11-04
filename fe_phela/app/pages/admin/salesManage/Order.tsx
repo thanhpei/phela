@@ -20,6 +20,14 @@ interface Order {
 
 const STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'DELIVERING', 'DELIVERED', 'CANCELLED'];
 
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  'PENDING': 'Chờ xác nhận',
+  'CONFIRMED': 'Đã xác nhận',
+  'DELIVERING': 'Đang giao',
+  'DELIVERED': 'Đã giao',
+  'CANCELLED': 'Đã hủy'
+};
+
 const Order = () => {
   const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -68,17 +76,35 @@ const Order = () => {
     }
   };
 
+  // Get next possible statuses based on current status and user role
   const getAvailableActions = (currentStatus: OrderStatus): OrderStatus[] => {
     const role = user?.role;
+
+    // Define status workflow
+    const statusWorkflow: Record<OrderStatus, OrderStatus[]> = {
+      'PENDING': ['CONFIRMED', 'CANCELLED'],
+      'CONFIRMED': ['DELIVERING', 'CANCELLED'],
+      'DELIVERING': ['DELIVERED', 'CANCELLED'],
+      'DELIVERED': [], // Final state
+      'CANCELLED': [] // Final state
+    };
+
+    const nextStatuses = statusWorkflow[currentStatus] || [];
+
+    // Filter based on role permissions
     if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-      return ['CONFIRMED', 'DELIVERING', 'DELIVERED', 'CANCELLED'];
+      // Admin can do everything
+      return nextStatuses;
+    } else if (role === 'STAFF') {
+      // Staff can confirm orders and mark as delivering
+      return nextStatuses.filter(status =>
+        status === 'CONFIRMED' || status === 'DELIVERING' || status === 'CANCELLED'
+      );
+    } else if (role === 'DELIVERY_STAFF') {
+      // Delivery staff can only mark as delivered
+      return nextStatuses.filter(status => status === 'DELIVERED');
     }
-    if (role === 'STAFF') {
-      return ['CONFIRMED', 'DELIVERING'];
-    }
-    if (role === 'DELIVERY_STAFF') {
-      return ['DELIVERED'];
-    }
+
     return [];
   };
 
@@ -113,19 +139,27 @@ const Order = () => {
         
         {/* Status Filter Tabs */}
         <div className="mb-6 flex space-x-2 overflow-x-auto pb-2">
-          {STATUSES.map(status => (
-            <button
-              key={status}
-              onClick={() => setSelectedStatus(status)}
-              className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedStatus === status 
-                  ? 'bg-[#d4a373] text-white' 
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
+          {STATUSES.map(status => {
+            const orderCount = status === selectedStatus ? orders.length : 0;
+            return (
+              <button
+                key={status}
+                onClick={() => setSelectedStatus(status)}
+                className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                  selectedStatus === status
+                    ? 'bg-[#d4a373] text-white shadow-lg'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {STATUS_LABELS[status]}
+                {selectedStatus === status && orderCount > 0 && (
+                  <span className="ml-2 bg-white text-[#d4a373] px-2 py-0.5 rounded-full text-xs font-bold">
+                    {orderCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
         
         {loading ? (
@@ -158,20 +192,29 @@ const Order = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                            {order.status}
+                            {STATUS_LABELS[order.status]}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-10">
-                          <select
-                            defaultValue={order.status}
-                            onChange={(e) => handleUpdateStatus(order.orderId, e.target.value as OrderStatus)}
-                            className="text-sm rounded-md border-gray-300 shadow-sm focus:border-[#d4a373] focus:ring focus:ring-[#d4a373] focus:ring-opacity-50"
-                          >
-                            <option value={order.status} disabled>{order.status}</option>
-                            {getAvailableActions(order.status).map(action => (
-                              <option key={action} value={action}>{action}</option>
-                            ))}
-                          </select>
+                          {getAvailableActions(order.status).length > 0 ? (
+                            <select
+                              defaultValue=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleUpdateStatus(order.orderId, e.target.value as OrderStatus);
+                                  e.target.value = '';
+                                }
+                              }}
+                              className="text-sm rounded-md border-gray-300 shadow-sm focus:border-[#d4a373] focus:ring focus:ring-[#d4a373] focus:ring-opacity-50"
+                            >
+                              <option value="">Cập nhật trạng thái</option>
+                              {getAvailableActions(order.status).map(action => (
+                                <option key={action} value={action}>{STATUS_LABELS[action]}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Không có hành động</span>
+                          )}
                           <Link 
                             to={`/admin/don-hang/${order.orderId}`}
                             className="text-[#d4a373] hover:text-[#b38a5a]"

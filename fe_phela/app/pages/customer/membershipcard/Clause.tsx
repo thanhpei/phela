@@ -1,6 +1,7 @@
 import React from 'react'
 import Header from '~/components/customer/Header'
 import Footer from '~/components/customer/Footer'
+import img from '~/assets/images/the-thanh-vien.jpg'
 
 const Clause = () => {
   return (
@@ -13,7 +14,7 @@ const Clause = () => {
         {/* Hero Image */}
         <div className="w-full">
           <img
-            src="https://phela.vn/wp-content/uploads/2022/05/hi.jpg"
+            src={img}
             alt="Thành viên Phê La"
             className="w-full h-72 object-cover"
           />

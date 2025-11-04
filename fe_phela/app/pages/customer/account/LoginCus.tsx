@@ -5,6 +5,7 @@ import { useAuth } from "~/AuthContext"; //
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '~/config/axios';
+import { sendOtpForCustomerPasswordReset, verifyOtpAndResetCustomerPassword } from '~/services/authServices';
 
 const LoginCustomer = () => {
     const navigate = useNavigate();
@@ -34,7 +35,10 @@ const LoginCustomer = () => {
 
             updateLocation();
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Tài khoản hoặc mật khẩu không đúng!';
+            // Handle structured error response from backend
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Tài khoản hoặc mật khẩu không đúng!';
             toast.error(errorMessage);
             setLoading(false);
         }
@@ -87,12 +91,13 @@ const LoginCustomer = () => {
         }
         setLoading(true);
         try {
-            // Corrected: Send as JSON object, not plain text
-            await api.post('/auth/forgot-password/send-otp', { email: forgotPasswordEmail }); //
+            await sendOtpForCustomerPasswordReset(forgotPasswordEmail);
             toast.success("Mã OTP đã được gửi đến email của bạn.");
             setResetStage('otp'); // Move to OTP stage
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Gửi OTP thất bại.';
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Gửi OTP thất bại.';
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -110,18 +115,20 @@ const LoginCustomer = () => {
         }
         setLoading(true);
         try {
-            await api.post('/auth/forgot-password/reset', {
+            await verifyOtpAndResetCustomerPassword({
                 email: forgotPasswordEmail,
                 otp,
                 newPassword
-            }); //
+            });
             toast.success("Mật khẩu của bạn đã được đặt lại thành công.");
             setResetStage('success'); // Move to success stage
             setTimeout(() => {
                 handleCloseForgotPassword(); // Use the dedicated close function
             }, 3000);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Đặt lại mật khẩu thất bại.';
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Đặt lại mật khẩu thất bại.';
             toast.error(errorMessage);
         } finally {
             setLoading(false);

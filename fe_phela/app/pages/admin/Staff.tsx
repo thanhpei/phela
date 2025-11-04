@@ -173,10 +173,10 @@ const Staff = () => {
       await api.patch(`/api/admin/${username}/assign-branch`, null, {
         params: { branchCode, curentUsername: user.username },
       });
-      setAdmins(prev => prev.map(admin => 
-        admin.username === username ? { 
-          ...admin, 
-          branch: branches.find(b => b.branchCode === branchCode)?.branchName || branchCode 
+      setAdmins(prev => prev.map(admin =>
+        admin.username === username ? {
+          ...admin,
+          branch: branchCode
         } : admin
       ));
       toast.success('Gán chi nhánh thành công!');

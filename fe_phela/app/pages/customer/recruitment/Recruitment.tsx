@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Header from '~/components/customer/Header';
-import api from '~/config/axios';
 import '~/assets/css/DeliveryAddress.css'
 import { Link } from 'react-router-dom';
+import { getPublicJobPostings, getApplicationCount } from '~/services/jobService';
 
 interface JobPosting {
   jobPostingId: string;
@@ -29,8 +29,21 @@ const Recruitment: React.FC = () => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const response = await api.get('/api/job-postings/active');
-        setJobs(response.data);
+        const jobsData = await getPublicJobPostings();
+
+        // Add application count to each job
+        const jobsWithCount = await Promise.all(
+          jobsData.map(async (job: JobPosting) => {
+            try {
+              const count = await getApplicationCount(job.jobPostingId);
+              return { ...job, applicationCount: count };
+            } catch {
+              return { ...job, applicationCount: 0 };
+            }
+          })
+        );
+
+        setJobs(jobsWithCount);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching jobs:', err);

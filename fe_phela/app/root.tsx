@@ -11,8 +11,9 @@ import {
 } from "react-router";
 import { useAuth, AuthProvider } from "./AuthContext";
 import { useEffect } from 'react';
-
-
+import { ToastContainer } from 'react-toastify';
+import { toastContainerConfig } from './utils/notificationConfig';
+import 'react-toastify/dist/ReactToastify.css';
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -85,6 +86,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppWithAuth />
+      <ToastContainer {...toastContainerConfig} />
     </AuthProvider>
   );
 }

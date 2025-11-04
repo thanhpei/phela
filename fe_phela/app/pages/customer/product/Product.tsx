@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import HeadOrder from '~/components/customer/HeadOrder';
 import { Link, useNavigate } from "react-router-dom";
-import api from '~/config/axios';
 import '~/assets/css/DeliveryAddress.css'
 import { useAuth } from '~/AuthContext';
 import { FiShoppingCart, FiChevronRight } from 'react-icons/fi';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { getPublicCategories } from '~/services/categoryService';
+import { getPublicProductsByCategory, getPublicProductById } from '~/services/productService';
+import { getCustomerCart, addToCart as addItemToCart } from '~/services/cartService';
 
 interface Product {
     productId: string;
@@ -34,19 +36,17 @@ const Product = () => {
     useEffect(() => {
         const fetchCategoriesAndProducts = async () => {
             try {
-                const [categoriesResponse] = await Promise.all([
-                    api.get('/api/categories/getAll'),
-                ]);
-                
-                const categoriesData = categoriesResponse.data.content;
+                // Use public API endpoints (no authentication required)
+                const categoriesResponse = await getPublicCategories();
+                const categoriesData = categoriesResponse.content;
 
                 const categoriesWithProducts = await Promise.all(
                     categoriesData.map(async (category: { categoryCode: string; categoryName: string }) => {
-                        const productsResponse = await api.get(`/api/product/category/${category.categoryCode}`);
+                        const productsData = await getPublicProductsByCategory(category.categoryCode);
                         return {
                             categoryCode: category.categoryCode,
                             categoryName: category.categoryName,
-                            products: productsResponse.data
+                            products: productsData
                         };
                     })
                 );
@@ -83,12 +83,13 @@ const Product = () => {
         }
 
         try {
-            const productResponse = await api.get(`/api/product/get/${productId}`);
-            const product = productResponse.data;
+            // Get product details using public API
+            const product = await getPublicProductById(productId);
 
+            // Get customer cart
             const customerId = user.customerId;
-            const cartResponse = await api.get(`/api/customer/cart/getCustomer/${customerId}`);
-            const cartId = cartResponse.data.cartId;
+            const cart = await getCustomerCart(customerId);
+            const cartId = cart.cartId;
 
             if (cartId) {
                 const cartItemDTO = {
@@ -97,7 +98,7 @@ const Product = () => {
                     amount: product.originalPrice * 1,
                     note: ''
                 };
-                await api.post(`/api/customer/cart/${cartId}/items`, cartItemDTO);
+                await addItemToCart(cartId, cartItemDTO);
                 window.dispatchEvent(new Event('cartUpdated'));
                 toast.success('Đã thêm sản phẩm vào giỏ hàng');
             }

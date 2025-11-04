@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Header from '~/components/admin/Header';
-import api from '~/config/axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '~/AuthContext';
 import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiChevronLeft, FiChevronRight, FiX, FiLock } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { getAllCategoriesAdmin, createCategory, updateCategory, deleteCategory } from '~/services/categoryService';
 
 interface Category {
   categoryCode: string;
@@ -51,12 +51,7 @@ const Category = () => {
     setLoading(true);
     setError(null);
     try {
-      let url = `/api/categories/getAll?page=${currentPage}&size=10&sortBy=categoryName`;
-      if (searchName) {
-        url = `/api/admin/categories/search?categoryName=${searchName}`;
-      }
-      const response = await api.get(url);
-      const data = response.data;
+      const data = await getAllCategoriesAdmin(currentPage, 10, searchName);
       if (data.content) {
         setCategories(data.content.map((item: any) => ({
           categoryCode: item.categoryCode,
@@ -91,15 +86,15 @@ const Category = () => {
     }
     try {
       if (editCategory) {
-        const response = await api.put(`/api/admin/categories/${editCategory.categoryCode}`, newCategory);
+        const response = await updateCategory(editCategory.categoryCode, newCategory);
         setCategories(categories.map(cat =>
-          cat.categoryCode === editCategory.categoryCode ? response.data : cat
+          cat.categoryCode === editCategory.categoryCode ? response : cat
         ));
         setEditCategory(null);
         toast.success('Cập nhật danh mục thành công!');
       } else {
-        const response = await api.post('/api/admin/categories/create', newCategory);
-        setCategories([response.data, ...categories]);
+        const response = await createCategory(newCategory);
+        setCategories([response, ...categories]);
         toast.success('Tạo danh mục thành công!');
       }
       setNewCategory({ categoryName: '', description: '' });
@@ -113,7 +108,7 @@ const Category = () => {
   const handleDeleteCategory = async (categoryCode: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
     try {
-      await api.delete(`/api/admin/categories/${categoryCode}`);
+      await deleteCategory(categoryCode);
       setCategories(categories.filter(cat => cat.categoryCode !== categoryCode));
       toast.success('Xóa danh mục thành công!');
     } catch (error: any) {

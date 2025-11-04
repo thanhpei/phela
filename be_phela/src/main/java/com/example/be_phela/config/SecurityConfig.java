@@ -66,12 +66,41 @@ public class SecurityConfig {
                 )
                 .authenticationManager(authenticationManager())
                 .authorizeHttpRequests(registry -> {
-                    // Cho phép truy cập không cần xác thực
-//                    registry.requestMatchers("/auth/admin/register", "/auth/customer/register",
-//                            "/auth/admin/login", "/auth/customer/login","/verify").permitAll();
-                    registry.requestMatchers("/auth/**","/api/**","/verify","/api/admin/**","/api/customer/**","/ws/**").permitAll();
-//                    registry.requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_STAFF");
-//                    registry.requestMatchers("/api/customer/**").hasAnyAuthority("ROLE_CUSTOMER");
+                    // Allow CORS preflight requests (OPTIONS method)
+                    registry.requestMatchers(request -> "OPTIONS".equals(request.getMethod())).permitAll();
+
+                    // Public endpoints - no authentication required
+                    registry.requestMatchers(
+                            "/healthz",
+                            "/auth/admin/register",
+                            "/auth/customer/register",
+                            "/auth/admin/login",
+                            "/auth/customer/login",
+                            "/auth/forgot-password/**",
+                            "/auth/admin/forgot-password/**",
+                            "/verify",
+                            "/api/product/**",
+                            "/api/categories/**",
+                            "/api/banner/**",
+                            "/api/banners/**",
+                            "/api/contacts/**",
+                            "/api/applications/**",
+                            "/api/news/**",
+                            "/api/job-postings/**",
+                            "/api/branch/**",
+                            "/ws/**",
+                            "/error"
+                    ).permitAll();
+
+                    // Admin endpoints - require admin roles
+                    registry.requestMatchers("/api/admin/**")
+                            .hasAnyAuthority("ROLE_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_STAFF");
+
+                    // Customer endpoints - require customer role
+                    registry.requestMatchers("/api/customer/**")
+                            .hasAnyAuthority("ROLE_CUSTOMER");
+
+                    // All other requests require authentication
                     registry.anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)

@@ -1,20 +1,94 @@
 
 import api from '~/config/axios';
+import axios from 'axios';
 
-// Lấy danh sách tất cả tin tức
-export const getAllNews = async () => {
-  const response = await api.get('/api/admin/news');
+// Get API base URL for public endpoints
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+// Create a separate axios instance for public endpoints (no auth required)
+const publicApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+});
+
+export interface News {
+  newsId: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewsCreateDTO {
+  title: string;
+  content: string;
+  imageFile?: File;
+}
+
+export interface NewsUpdateDTO {
+  title?: string;
+  content?: string;
+  imageFile?: File;
+}
+
+// PUBLIC ENDPOINTS - No authentication required
+export const getPublicNews = async () => {
+  const response = await publicApi.get('/api/news');
   return response.data;
 };
 
-// Lấy chi tiết một tin tức
+export const getPublicNewsById = async (newsId: string) => {
+  const response = await publicApi.get(`/api/news/${newsId}`);
+  return response.data;
+};
+
+export const searchPublicNews = async (searchParams: {
+  title?: string;
+  page?: number;
+  size?: number;
+}) => {
+  const params = new URLSearchParams();
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      params.append(key, value.toString());
+    }
+  });
+
+  const response = await publicApi.get(`/api/news/search?${params.toString()}`);
+  return response.data;
+};
+
+// ADMIN ENDPOINTS - Require admin authentication
+export const getAllNewsAdmin = async (page: number = 0, size: number = 10) => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString(),
+  });
+
+  const response = await api.get(`/api/admin/news?${params.toString()}`);
+  return response.data;
+};
+
 export const getNewsById = async (newsId: string) => {
   const response = await api.get(`/api/admin/news/${newsId}`);
   return response.data;
 };
 
-// Tạo tin tức mới 
-export const createNews = async (formData: FormData) => {
+export const createNews = async (newsData: NewsCreateDTO) => {
+  const formData = new FormData();
+  formData.append('title', newsData.title);
+  formData.append('content', newsData.content);
+
+  if (newsData.imageFile) {
+    formData.append('imageFile', newsData.imageFile);
+  }
+
   const response = await api.post('/api/admin/news', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -23,8 +97,13 @@ export const createNews = async (formData: FormData) => {
   return response.data;
 };
 
-// Cập nhật tin tức 
-export const updateNews = async (newsId: string, formData: FormData) => {
+export const updateNews = async (newsId: string, newsData: NewsUpdateDTO) => {
+  const formData = new FormData();
+
+  if (newsData.title) formData.append('title', newsData.title);
+  if (newsData.content) formData.append('content', newsData.content);
+  if (newsData.imageFile) formData.append('imageFile', newsData.imageFile);
+
   const response = await api.put(`/api/admin/news/${newsId}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -33,23 +112,10 @@ export const updateNews = async (newsId: string, formData: FormData) => {
   return response.data;
 };
 
-// Xóa tin tức
 export const deleteNews = async (newsId: string) => {
   const response = await api.delete(`/api/admin/news/${newsId}`);
   return response.data;
 };
 
-// === CUSTOMER API  ===
-
-// Lấy danh sách tin tức cho khách hàng
-export const getPublicNews = async () => {
-  // Dùng endpoint public, không cần token
-  const response = await api.get('/api/news');
-  return response.data;
-};
-
-// Lấy chi tiết một tin tức cho khách hàng
-export const getPublicNewsById = async (newsId: string) => {
-  const response = await api.get(`/api/news/${newsId}`);
-  return response.data;
-};
+// Alias for backwards compatibility
+export const getAllNews = getAllNewsAdmin;

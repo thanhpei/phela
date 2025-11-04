@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '~/components/customer/Header'
 import Footer from '~/components/customer/Footer'
 import imgStore from "~/assets/images/store.png"
-import api from '~/config/axios';
+import { getPublicBranches } from '~/services/branchService';
 
 interface Branch {
   branchCode: string;
@@ -23,8 +23,8 @@ const Store = () => {
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        const response = await api.get<Branch[]>('/api/branch');
-        setBranches(response.data);
+        const branchesData = await getPublicBranches();
+        setBranches(branchesData);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching branches:', error);

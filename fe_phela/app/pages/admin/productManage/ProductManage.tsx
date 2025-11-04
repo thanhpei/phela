@@ -149,11 +149,15 @@ const ProductManage = () => {
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      if (editProduct && !selectedImage) {
-        formData.append('product', new Blob([JSON.stringify({ ...newProduct, imageUrl: editProduct.imageUrl })], { type: 'application/json' }));
-      } else {
-        formData.append('product', new Blob([JSON.stringify(newProduct)], { type: 'application/json' }));
-      }
+
+      // Create product DTO (excluding categoryCode and imageUrl from the object)
+      const productDTO = {
+        productName: newProduct.productName,
+        description: newProduct.description,
+        originalPrice: newProduct.originalPrice
+      };
+
+      formData.append('product', new Blob([JSON.stringify(productDTO)], { type: 'application/json' }));
       formData.append('categoryCode', newProduct.categoryCode);
 
       if (selectedImage) {

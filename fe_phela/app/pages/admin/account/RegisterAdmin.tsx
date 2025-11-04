@@ -62,8 +62,10 @@ const RegisterAdmin = () => {
             }, 2000);
 
         } catch (err: any) {
-            // Hiển thị lỗi chi tiết từ backend
-            const errorMessage = err.response?.data?.message || 'Đăng ký không thành công! Vui lòng thử lại sau!';
+            // Handle structured error response from backend
+            const errorMessage = err.response?.data?.message
+                || err.message
+                || 'Đăng ký không thành công! Vui lòng thử lại sau!';
             toast.error(errorMessage);
         } finally {
             setLoading(false);

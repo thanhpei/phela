@@ -17,14 +17,9 @@
         },
         {
           "id":2,
-          "title": "Bán hàng",
-          "link": "/admin/dashboard",
-          "subMenu": [
-            {
-              "title": "Đơn hàng",
-              "link": "/admin/don-hang"
-            }
-          ]
+          "title": "Đơn hàng",
+          "link": "/admin/don-hang",
+          "subMenu": []
         },
         {
           "id":3,
@@ -38,13 +33,8 @@
         {
           "id":4,
           "title": "Khuyến mãi",
-          "link": "/admin/dashboard",
-          "subMenu": [             
-              {
-                  "title": "Mã giảm giá",
-                  "link": "/admin/ma-giam-gia"
-              }
-          ]
+          "link": "/admin/ma-giam-gia",
+          "subMenu": []
         },
         {
           "id":5,

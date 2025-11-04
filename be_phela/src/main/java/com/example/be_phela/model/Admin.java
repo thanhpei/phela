@@ -88,4 +88,34 @@ public class Admin implements UserDetails {
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
     }
 
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.username;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return this.status != Status.BLOCKED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.status == Status.ACTIVE;
+    }
+
 }

@@ -30,6 +30,10 @@ public class AdminUserDetailsService implements UserDetailsService {
         switch (admin.getStatus()) {
             case BLOCKED -> throw new LockedException("Tài khoản đã bị khóa!");
             case PENDING -> throw new DisabledException("Bạn cần xác thực tài khoản qua email!");
+            case INACTIVE -> throw new DisabledException("Tài khoản đã bị vô hiệu hóa!");
+            case ACTIVE -> {
+                // Account is active, continue with authentication
+            }
         }
 
         return admin;

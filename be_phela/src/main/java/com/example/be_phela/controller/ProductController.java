@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping
 @RequiredArgsConstructor
@@ -40,11 +42,11 @@ public class ProductController {
             Product savedProduct = productService.createProduct(productCreateDTO, categoryCode, image);
             return ResponseEntity.ok(productMapper.toProductResponseDTO(savedProduct));
         } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null,null,null, null, null, null, null));
+            log.error("Error uploading image for product: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to upload product image", e);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ProductResponseDTO(e.getMessage(),null,null,null, null, null, null, null));
+            log.error("Error creating product: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to create product: " + e.getMessage(), e);
         }
     }
 
@@ -59,11 +61,11 @@ public class ProductController {
             Product updatedProduct = productService.updateProduct(productId, productCreateDTO, categoryCode, image);
             return ResponseEntity.ok(productMapper.toProductResponseDTO(updatedProduct));
         } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ProductResponseDTO("Error uploading image: " + e.getMessage(),null,null,null, null, null, null, null));
+            log.error("Error uploading image for product update: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to upload product image", e);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ProductResponseDTO(e.getMessage(),null,null,null, null, null, null, null));
+            log.error("Error updating product: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to update product: " + e.getMessage(), e);
         }
     }
 

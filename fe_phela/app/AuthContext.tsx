@@ -51,27 +51,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initializeAuth = async () => {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
-      
+
       if (storedUser && storedToken) {
         const parsedUser: User = JSON.parse(storedUser);
-        
+
         try {
           // Lấy thông tin người dùng từ API
-          const freshData = parsedUser.type === 'admin' 
+          const freshData = parsedUser.type === 'admin'
             ? await getAdminProfile(parsedUser.username)
             : await getCustomerProfile(parsedUser.username);
-          
+
           setUser({
             ...parsedUser,
             ...freshData
           });
         } catch (error) {
           console.error('Failed to refresh user data:', error);
-          setUser(parsedUser);
-        } finally
-        {
+          // setUser(parsedUser);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        } finally {
           setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
     };
 
@@ -81,17 +85,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (credentials: { username: string; password: string }, type: 'admin' | 'customer') => {
     try {
       setLoading(true);
-      const response = type === 'admin' 
+      const apiResponse = type === 'admin'
         ? await loginAdmin(credentials)
         : await loginCustomer(credentials);
-      
-      const { token, username, role } = response.data;
-      
-      // Lấy thông tin người dùng từ API
+
+      // Auth endpoints return ApiResponse wrapper: { success, status, message, data, timestamp }
+      // The actual auth data is inside apiResponse.data
+      const { token, username, role } = apiResponse.data;
+
+      // Lưu token vào localStorage trước để interceptor lấy được
+      localStorage.setItem('token', token);
+
+      // Lấy thông tin người dùng từ API (lúc này interceptor đã có token)
       const profile = type === 'admin'
         ? await getAdminProfile(username)
         : await getCustomerProfile(username);
-      
+
       const userData: User = {
         ...profile,
         username,
@@ -99,12 +108,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         type,
         token
       };
-      
-      localStorage.setItem('token', token);
+
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
-    } catch (error) {
-      throw new Error(`${type === 'admin' ? 'Admin' : 'Customer'} login failed`);
+    } catch (error: any) {
+      // Clear token if profile fetch fails
+      localStorage.removeItem('token');
+
+      // Preserve the original error from the backend
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -112,23 +124,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUserProfile = async (data: Partial<User>) => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       let updatedProfile;
-      
+
       if (user.type === 'admin') {
         const currentUsername = user.username;
         updatedProfile = await updateAdminProfile(user.username, data, currentUsername);
       } else {
         updatedProfile = await updateCustomerProfile(user.username, data);
       }
-      
+
       const updatedUser = {
         ...user,
         ...updatedProfile
       };
-      
+
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
     } catch (error) {
@@ -150,10 +162,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout: handleLogout, 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout: handleLogout,
       loading,
       updateUserProfile
     }}>

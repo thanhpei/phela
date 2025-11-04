@@ -27,6 +27,10 @@ public class CustomerUserDetailsService implements UserDetailsService {
         switch (customer.getStatus()) {
             case BLOCKED -> throw new LockedException("Tài khoản đã bị khóa!");
             case PENDING -> throw new DisabledException("Bạn cần xác thực tài khoản qua email!");
+            case INACTIVE -> throw new DisabledException("Tài khoản đã bị vô hiệu hóa!");
+            case ACTIVE -> {
+                // Account is active, continue with authentication
+            }
         }
 
         return customer;
