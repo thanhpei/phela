@@ -2,7 +2,7 @@ import api from '../config/axios';
 import axios from 'axios';
 
 // Get API base URL for public endpoints
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://phela-backend.onrender.com';
 
 // Create a separate axios instance for public endpoints (no auth required)
 const publicApi = axios.create({

@@ -57,7 +57,7 @@ const Support = () => {
             loadInitialConversations();
 
             const client = new Client({
-                webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+                webSocketFactory: () => new SockJS('https://phela-backend.onrender.com/ws'),
                 onConnect: () => {
                     console.log('Admin connected!');
                     client.subscribe('/topic/chat/**', (message) => {
@@ -187,7 +187,7 @@ const Support = () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch('http://localhost:8080/api/chat/uploadImage', { // Cập nhật URL API
+            const response = await fetch('https://phela-backend.onrender.com/api/chat/uploadImage', { // Cập nhật URL API
                 method: 'POST',
                 body: formData,
             });

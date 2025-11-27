@@ -1,13 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 
-// Get API base URL from environment variables with fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://phela-backend.onrender.com';
-
-// Thêm dòng debug này để kiểm tra
-console.log('API_BASE_URL:', API_BASE_URL);
-console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('All env vars:', import.meta.env);
 
 // Tạo một instance của Axios
 const api: AxiosInstance = axios.create({

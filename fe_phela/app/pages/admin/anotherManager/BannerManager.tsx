@@ -3,21 +3,15 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Header from '~/components/admin/Header';
 import Modal from '~/components/admin/Modal';
-import { getAllBanners, createBanner, deleteBanner, updateBannerStatus } from '~/services/bannerService';
+import { getAllBannersAdmin, createBanner, deleteBanner, updateBannerStatus, BannerStatus } from '~/services/bannerService';
 import { FiLock } from 'react-icons/fi';
 import { useAuth } from '~/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
 import '~/assets/css/DeliveryAddress.css'
-
-
-export enum BannerStatus {
-    ACTIVE = 'ACTIVE',
-    INACTIVE = 'INACTIVE'
-}
 
 interface Banner {
     bannerId: string;
+    title: string;
     imageUrl: string;
     createdAt: string;
     status: BannerStatus;
@@ -28,6 +22,7 @@ const BannerManager = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
+    const [newBannerTitle, setNewBannerTitle] = useState<string>('');
     const [preview, setPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
@@ -53,8 +48,8 @@ const BannerManager = () => {
     const fetchBanners = async () => {
         try {
             setLoading(true);
-            const data = await getAllBanners();
-            setBanners(data);
+            const data = await getAllBannersAdmin(0, 100); 
+            setBanners(data.content || data);
         } catch (error) {
             toast.error("Không thể tải danh sách banner.");
         } finally {
@@ -77,12 +72,18 @@ const BannerManager = () => {
             return;
         }
 
+        if (!newBannerTitle.trim()) {
+            toast.warn("Vui lòng nhập tiêu đề banner.");
+            return;
+        }
+
         setIsSubmitting(true);
-        const formData = new FormData();
-        formData.append('file', newBannerFile);
 
         try {
-            await createBanner(formData);
+            await createBanner({
+                title: newBannerTitle,
+                imageFile: newBannerFile
+            });
             toast.success("Thêm banner mới thành công!");
             closeModalAndReset();
             fetchBanners(); // Tải lại danh sách
@@ -119,6 +120,7 @@ const BannerManager = () => {
     const closeModalAndReset = () => {
         setIsModalOpen(false);
         setNewBannerFile(null);
+        setNewBannerTitle('');
         setPreview(null);
     };
 
@@ -213,6 +215,20 @@ const BannerManager = () => {
 
             <Modal isOpen={isModalOpen} onClose={closeModalAndReset} title="Thêm banner mới">
                 <form onSubmit={handleCreateBanner}>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="bannerTitle">
+                            Tiêu đề banner
+                        </label>
+                        <input
+                            id="bannerTitle"
+                            type="text"
+                            value={newBannerTitle}
+                            onChange={(e) => setNewBannerTitle(e.target.value)}
+                            placeholder="Nhập tiêu đề banner"
+                            required
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
                     <div className="mb-4">
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="bannerFile">
                             Chọn ảnh banner
