@@ -17,12 +17,11 @@ git push origin main
 3. Connect GitHub repository của bạn
 4. Render sẽ tự động phát hiện file `render.yaml`
 5. Nhập các **Secret Environment Variables**:
-   - `DB_URL`: jdbc:mysql://your-db-host:3306/dbname?useSSL=false&serverTimezone=UTC
+   - `DB_URL`: jdbc:mysql://your-db-host:3306/dbname?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
    - `DB_USER`: your_db_username
    - `DB_PASSWORD`: your_db_password
-   - `JWT_SIGNER_KEY`: your_jwt_secret_key
-   - `SENDGRID_API_KEY`: your_sendgrid_api_key
-   - `MAIL_USERNAME`: your_email@example.com
+   - `JWT_SIGNER_KEY`: your_jwt_secret_key (ít nhất 32 ký tự)
+   - `MAIL_USERNAME`: your_email@gmail.com
    - `CLOUDINARY_CLOUD_NAME`: your_cloudinary_cloud_name
    - `CLOUDINARY_API_KEY`: your_cloudinary_api_key
    - `CLOUDINARY_API_SECRET`: your_cloudinary_api_secret

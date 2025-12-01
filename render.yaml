@@ -29,9 +29,7 @@ services:
       - key: APP_BASE_URL
         value: https://phela-backend.onrender.com
       
-      # SendGrid Email Configuration
-      - key: SENDGRID_API_KEY
-        sync: false
+      # Email Configuration
       - key: MAIL_USERNAME
         sync: false
       
