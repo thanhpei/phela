@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
