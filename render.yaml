@@ -70,8 +70,8 @@ services:
     rootDir: ./fe_phela
     plan: free
     branch: main
-    buildCommand: npm install --include=dev && npm run build:customer
-    startCommand: npx vite preview --host 0.0.0.0 --port $PORT --outDir build/client
+    buildCommand: npm install && npm run build:customer
+    startCommand: node server.mjs
     envVars:
       - key: VITE_API_URL
         value: https://phela-backend.onrender.com
@@ -87,8 +87,8 @@ services:
     rootDir: ./fe_phela
     plan: free
     branch: main
-    buildCommand: npm install --include=dev && npm run build:admin
-    startCommand: npx vite preview --host 0.0.0.0 --port $PORT --outDir build/client
+    buildCommand: npm install && npm run build:admin
+    startCommand: node server.mjs
     envVars:
       - key: VITE_API_URL
         value: https://phela-backend.onrender.com
