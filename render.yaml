@@ -64,7 +64,7 @@ services:
     rootDir: ./fe_phela
     plan: free
     branch: main
-    buildCommand: npm install && npm run build:customer
+    buildCommand: npm install --include=dev && npm run build:customer
     startCommand: npm run dev:customer
     envVars:
       - key: VITE_API_URL
@@ -81,7 +81,7 @@ services:
     rootDir: ./fe_phela
     plan: free
     branch: main
-    buildCommand: npm install && npm run build:admin
+    buildCommand: npm install --include=dev && npm run build:admin
     startCommand: npm run dev:admin
     envVars:
       - key: VITE_API_URL
