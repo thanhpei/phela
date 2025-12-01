@@ -22,6 +22,7 @@ git push origin main
    - `DB_PASSWORD`: your_db_password
    - `JWT_SIGNER_KEY`: your_jwt_secret_key (ít nhất 32 ký tự)
    - `MAIL_USERNAME`: your_email@gmail.com
+   - `SENDGRID_API_KEY`: your_sendgrid_api_key
    - `CLOUDINARY_CLOUD_NAME`: your_cloudinary_cloud_name
    - `CLOUDINARY_API_KEY`: your_cloudinary_api_key
    - `CLOUDINARY_API_SECRET`: your_cloudinary_api_secret

@@ -32,6 +32,8 @@ services:
       # Email Configuration
       - key: MAIL_USERNAME
         sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
       
       # Cloudinary Configuration
       - key: CLOUDINARY_CLOUD_NAME
