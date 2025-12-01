@@ -70,9 +70,11 @@ services:
     rootDir: ./fe_phela
     plan: free
     branch: main
-    buildCommand: npm install && npm run build:customer
+    buildCommand: npm install --include=dev && npm run build
     startCommand: node server.mjs
     envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: VITE_API_URL
         value: https://phela-backend.onrender.com
       - key: VITE_ROLE
@@ -87,9 +89,11 @@ services:
     rootDir: ./fe_phela
     plan: free
     branch: main
-    buildCommand: npm install && npm run build:admin
+    buildCommand: npm install --include=dev && npm run build
     startCommand: node server.mjs
     envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: VITE_API_URL
         value: https://phela-backend.onrender.com
       - key: VITE_ROLE
