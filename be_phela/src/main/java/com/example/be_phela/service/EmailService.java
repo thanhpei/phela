@@ -17,12 +17,9 @@ import java.io.IOException;
 @Service
 public class EmailService {
 
-    // Lấy API key từ biến môi trường của Render
     @Value("${SENDGRID_API_KEY}")
     private String sendGridApiKey;
 
-    // Lấy email người gửi từ application.properties
-    // QUAN TRỌNG: Email này phải khớp với email bạn đã xác thực trên SendGrid
     @Value("${spring.mail.username}")
     private String fromEmail;
 
