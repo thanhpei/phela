@@ -13,6 +13,7 @@ const LoginCustomer = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Forgot password states
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -154,13 +155,23 @@ const LoginCustomer = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
             />
-            <input
-                type="password"
-                placeholder="Password"
-                className="p-2 mb-4 w-80 rounded border"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="relative w-80 mb-4">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    className="p-2 w-full rounded border pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                    {showPassword ? "Ẩn" : "Hiện"}
+                </button>
+            </div>
             <div className="flex justify-between w-80 mb-4">
                 <label className="flex items-center">
                     <input type="checkbox" className="mr-2" /> Remember me

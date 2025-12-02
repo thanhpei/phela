@@ -1,54 +1,55 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerCustomer } from '~/services/authServices';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Register = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        username: '',
-        password: '',
-        email: '',
-        gender: '',
+        username: "",
+        password: "",
+        confirmPassword: "",
+        email: "",
+        gender: "",
     });
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Hàm kiểm tra mật khẩu
     const validatePassword = (password: string) => {
-        // Yêu cầu: ít nhất 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         return passwordRegex.test(password);
     };
 
     const handleRegister = async () => {
-        // --- VALIDATION PHÍA CLIENT ---
         if (!formData.username || !formData.password || !formData.email || !formData.gender) {
             toast.error("Vui lòng điền đầy đủ tất cả các trường.");
             return;
         }
+
         if (!validatePassword(formData.password)) {
-            toast.warn("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
+            toast.error("Mật khẩu phải có ít nhất 8 ký tự và gồm chữ hoa, chữ thường, số, ký tự đặc biệt.");
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            toast.error("Mật khẩu xác nhận không trùng khớp.");
             return;
         }
 
         setLoading(true);
         try {
-            await registerCustomer(formData);
-            toast.success('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.');
+            const { confirmPassword, ...payload } = formData;
+            await registerCustomer(payload);
+            toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.");
 
-            // Chuyển hướng về trang đăng nhập sau khi thông báo thành công
             setTimeout(() => {
-                navigate('/login-register');
+                navigate("/login-register");
             }, 3000);
-
         } catch (err: any) {
-            // Handle structured error response from backend
-            const errorMessage = err.response?.data?.message
-                || err.message
-                || 'Không thể đăng ký, vui lòng thử lại sau!';
+            const errorMessage = err.response?.data?.message || err.message || "Không thể đăng ký, vui lòng thử lại sau!";
             toast.error(errorMessage);
-            console.error('Lỗi đăng ký:', err);
         } finally {
             setLoading(false);
         }
@@ -56,7 +57,6 @@ const Register = () => {
 
     return (
         <div className="flex flex-col justify-center items-center p-10 bg-yellow-50 text-black h-screen">
-            <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
             <h2 className="text-3xl font-bold mb-6">Register</h2>
             <input
                 type="text"
@@ -65,18 +65,45 @@ const Register = () => {
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 className="p-2 mb-4 w-80 rounded border"
             />
-            <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Password"
-                className="p-2 mb-4 w-80 rounded border"
-            />
+            <div className="relative mb-4 w-80">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Password"
+                    className="p-2 w-full rounded border pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                    {showPassword ? "Ẩn" : "Hiện"}
+                </button>
+            </div>
+            <div className="relative mb-4 w-80">
+                <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    placeholder="Confirm Password"
+                    className="p-2 w-full rounded border pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                    {showConfirmPassword ? "Ẩn" : "Hiện"}
+                </button>
+            </div>
             <input
                 type="email"
+                placeholder="Email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Email"
                 className="p-2 mb-4 w-80 rounded border"
             />
             <select

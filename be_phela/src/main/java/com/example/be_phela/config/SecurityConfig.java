@@ -47,10 +47,12 @@ public class SecurityConfig {
         DaoAuthenticationProvider adminProvider = new DaoAuthenticationProvider();
         adminProvider.setUserDetailsService(adminUserDetailsService);
         adminProvider.setPasswordEncoder(passwordEncoder());
+        adminProvider.setHideUserNotFoundExceptions(false);
 
         DaoAuthenticationProvider customerProvider = new DaoAuthenticationProvider();
         customerProvider.setUserDetailsService(customerUserDetailsService);
         customerProvider.setPasswordEncoder(passwordEncoder());
+        customerProvider.setHideUserNotFoundExceptions(false);
 
         return new ProviderManager(adminProvider, customerProvider);
     }

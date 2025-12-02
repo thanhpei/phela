@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from '~/services/authServices';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 
 const RegisterAdmin = () => {
     const navigate = useNavigate();
@@ -10,12 +9,15 @@ const RegisterAdmin = () => {
         fullname: '',
         username: '',
         password: '',
+        confirmPassword: '',
         dob: '',
         email: '',
         phone: '',
         gender: '',
     });
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const formatDateToDDMMYYYY = (dateStr: string) => {
         if (!dateStr) return '';
@@ -33,7 +35,7 @@ const RegisterAdmin = () => {
 
     const handleRegister = async () => {
         // Kiểm tra dữ liệu phía client trước
-        if (!formData.fullname || !formData.username || !formData.password || !formData.dob || !formData.email || !formData.phone || !formData.gender) {
+        if (!formData.fullname || !formData.username || !formData.password || !formData.confirmPassword || !formData.dob || !formData.email || !formData.phone || !formData.gender) {
             toast.error('Không được để trống bất kỳ trường nào!');
             return;
         }
@@ -43,11 +45,17 @@ const RegisterAdmin = () => {
             return;
         }
 
+        if (formData.password !== formData.confirmPassword) {
+            toast.error('Mật khẩu xác nhận không trùng khớp.');
+            return;
+        }
+
         setLoading(true);
         try {
+            const { confirmPassword, ...rest } = formData;
             const formattedData = {
-                ...formData,
-                dob: formData.dob ? formatDateToDDMMYYYY(formData.dob) : '',
+                ...rest,
+                dob: rest.dob ? formatDateToDDMMYYYY(rest.dob) : '',
             };
 
             await registerAdmin(formattedData);
@@ -56,7 +64,7 @@ const RegisterAdmin = () => {
             // Reset form và chuyển hướng sau một khoảng trễ ngắn để người dùng đọc toast
             setTimeout(() => {
                 setFormData({
-                    fullname: '', username: '', password: '', dob: '', email: '', phone: '', gender: ''
+                    fullname: '', username: '', password: '', confirmPassword: '', dob: '', email: '', phone: '', gender: ''
                 });
                 navigate('/');
             }, 2000);
@@ -74,7 +82,6 @@ const RegisterAdmin = () => {
 
     return (
         <div className="flex flex-col justify-center items-center p-10 bg-yellow-50 text-black h-screen overflow-y-auto">
-            <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
             <h2 className="text-3xl font-bold mb-6">Admin Register</h2>
 
             {/* Các trường input không thay đổi */}
@@ -92,13 +99,40 @@ const RegisterAdmin = () => {
                 placeholder="Username"
                 className="p-2 mb-4 w-80 rounded border"
             />
-            <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Password"
-                className="p-2 mb-4 w-80 rounded border"
-            />
+            <div className="relative">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Password"
+                    className="p-2 mb-4 w-80 rounded border pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                    {showPassword ? "Ẩn" : "Hiện"}
+                </button>
+            </div>
+            <div className="relative">
+                <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    placeholder="Confirm Password"
+                    className="p-2 mb-4 w-80 rounded border pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                    {showConfirmPassword ? "Ẩn" : "Hiện"}
+                </button>
+            </div>
             <input
                 type="email"
                 value={formData.email}
