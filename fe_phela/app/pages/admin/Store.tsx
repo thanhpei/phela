@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '~/components/admin/Header';
 import api from '~/config/axios';
 import { ToastContainer, toast } from 'react-toastify';
@@ -6,6 +6,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { FiEdit, FiTrash2, FiPlus, FiSearch, FiMapPin, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import "~/assets/css/DeliveryAddress.css"
 import { useAuth } from '~/AuthContext';
+import type { Province as ProvinceDTO, District as DistrictDTO } from '~/services/locationService';
+import { getLocationHierarchy } from '~/services/locationService';
 
 const useMapComponents = () => {
   const [mapComponents, setMapComponents] = useState<{
@@ -55,6 +57,15 @@ interface Branch {
   status: string;
 }
 
+interface GoongPrediction {
+  description: string;
+  place_id: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
+}
+
 const Store = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [cityFilter, setCityFilter] = useState<string>('');
@@ -73,9 +84,176 @@ const Store = () => {
   });
   const [mapPosition, setMapPosition] = useState<[number, number]>([21.0278, 105.8342]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const goongApiKey = import.meta.env.VITE_GOONG_API_KEY;
+  const [locationHierarchy, setLocationHierarchy] = useState<ProvinceDTO[]>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<number | null>(null);
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<number | null>(null);
+  const [goongSuggestions, setGoongSuggestions] = useState<GoongPrediction[]>([]);
+  const [showSuggestionList, setShowSuggestionList] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [goongError, setGoongError] = useState('');
   const { MapContainer, TileLayer, Marker, useMapEvents, L } = useMapComponents();
   const { user } = useAuth();
   const [hasPermission, setHasPermission] = useState(false);
+
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        setLocationLoading(true);
+        const data = await getLocationHierarchy();
+        setLocationHierarchy(data);
+        setLocationError('');
+      } catch (err) {
+        console.error('Error fetching location hierarchy:', err);
+        setLocationError('Không thể tải dữ liệu tỉnh/thành phố. Vui lòng thử lại sau.');
+      } finally {
+        setLocationLoading(false);
+      }
+    };
+
+    loadLocations();
+  }, []);
+
+  const canUseGoong = Boolean(goongApiKey);
+
+  const selectedProvince: ProvinceDTO | null = useMemo(() => {
+    if (selectedProvinceCode === null) return null;
+    return locationHierarchy.find((province) => province.code === selectedProvinceCode) ?? null;
+  }, [locationHierarchy, selectedProvinceCode]);
+
+  const districtOptions: DistrictDTO[] = useMemo(() => {
+    return selectedProvince?.districts ?? [];
+  }, [selectedProvince]);
+
+  const normalizeVietnamese = (value?: string) =>
+    value ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() : '';
+
+  const isNameMatch = (candidate?: string, expected?: string) => {
+    if (!candidate || !expected) return false;
+    const normalizedCandidate = normalizeVietnamese(candidate);
+    const normalizedExpected = normalizeVietnamese(expected);
+    return (
+      normalizedCandidate === normalizedExpected ||
+      normalizedCandidate.includes(normalizedExpected) ||
+      normalizedExpected.includes(normalizedCandidate)
+    );
+  };
+
+  const prefillLocationSelections = (city: string, district: string) => {
+    if (locationHierarchy.length === 0) return;
+
+    const matchedProvince = locationHierarchy.find((province) => isNameMatch(province.name, city));
+    if (matchedProvince) {
+      if (selectedProvinceCode !== matchedProvince.code) {
+        setSelectedProvinceCode(matchedProvince.code);
+      }
+
+      const matchedDistrict = matchedProvince.districts?.find((item) => isNameMatch(item.name, district));
+      if (matchedDistrict) {
+        if (selectedDistrictCode !== matchedDistrict.code) {
+          setSelectedDistrictCode(matchedDistrict.code);
+        }
+      } else {
+        setSelectedDistrictCode(null);
+      }
+    } else {
+      setSelectedProvinceCode(null);
+      setSelectedDistrictCode(null);
+    }
+  };
+
+  const handleProvinceChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = event.target;
+    if (!value) {
+      setSelectedProvinceCode(null);
+      setSelectedDistrictCode(null);
+      setNewBranch((prev) => ({ ...prev, city: '', district: '' }));
+      return;
+    }
+
+    const code = Number(value);
+    const province = locationHierarchy.find((item) => item.code === code) ?? null;
+    setSelectedProvinceCode(code);
+    setSelectedDistrictCode(null);
+    setNewBranch((prev) => ({
+      ...prev,
+      city: province?.name ?? '',
+      district: '',
+    }));
+  };
+
+  const handleDistrictChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = event.target;
+    if (!value) {
+      setSelectedDistrictCode(null);
+      setNewBranch((prev) => ({ ...prev, district: '' }));
+      return;
+    }
+
+    const code = Number(value);
+    const district = districtOptions.find((item) => item.code === code) ?? null;
+    setSelectedDistrictCode(code);
+    setNewBranch((prev) => ({
+      ...prev,
+      district: district?.name ?? '',
+    }));
+  };
+
+  const handleSelectSuggestion = async (suggestion: GoongPrediction) => {
+    if (!canUseGoong) return;
+
+    setShowSuggestionList(false);
+    setGoongSuggestions([]);
+    setSearchQuery(suggestion.description);
+
+    try {
+      setIsSearchingLocation(true);
+      setGoongError('');
+      const response = await fetch(
+        `https://rsapi.goong.io/place/details?place_id=${suggestion.place_id}&api_key=${goongApiKey}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Place detail request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const result = data?.result;
+      if (!result) {
+        throw new Error('No place detail found');
+      }
+
+      const geometry = result.geometry?.location;
+      const compound = result.compound ?? {};
+
+      const parsedLat = geometry?.lat !== undefined ? Number(geometry.lat) : undefined;
+      const parsedLng = geometry?.lng !== undefined ? Number(geometry.lng) : undefined;
+
+      const updatedBranch = {
+        ...newBranch,
+        city: compound.city || compound.province || newBranch.city,
+        district: compound.district || newBranch.district,
+        address: result.formatted_address || suggestion.description,
+        latitude: parsedLat ?? newBranch.latitude,
+        longitude: parsedLng ?? newBranch.longitude,
+      };
+
+      setNewBranch(updatedBranch);
+      if (parsedLat !== undefined && parsedLng !== undefined) {
+        setMapPosition([parsedLat, parsedLng]);
+      }
+      prefillLocationSelections(updatedBranch.city, updatedBranch.district);
+      toast.success('Đã cập nhật địa chỉ từ bản đồ!');
+    } catch (err) {
+      console.error('Error fetching Goong place detail:', err);
+      setGoongError('Không thể lấy chi tiết địa chỉ. Vui lòng thử lại.');
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -88,6 +266,72 @@ const Store = () => {
 
     fetchBranches();
   }, [cityFilter]);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      setSelectedProvinceCode(null);
+      setSelectedDistrictCode(null);
+      setGoongSuggestions([]);
+      setShowSuggestionList(false);
+      setGoongError('');
+      return;
+    }
+
+    prefillLocationSelections(newBranch.city, newBranch.district);
+  }, [isModalOpen, newBranch.city, newBranch.district, locationHierarchy]);
+
+  useEffect(() => {
+    if (!canUseGoong || !isModalOpen) {
+      return;
+    }
+
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 3) {
+      setGoongSuggestions([]);
+      setShowSuggestionList(false);
+      setGoongError('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsLoadingSuggestions(true);
+        setGoongError('');
+        const response = await fetch(
+          `https://rsapi.goong.io/place/autocomplete?api_key=${goongApiKey}&input=${encodeURIComponent(trimmed)}`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Autocomplete request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const predictions: GoongPrediction[] = data?.predictions ?? [];
+        setGoongSuggestions(predictions);
+        setShowSuggestionList(predictions.length > 0);
+      } catch (err) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        console.error('Error fetching Goong autocomplete:', err);
+        setGoongSuggestions([]);
+        setShowSuggestionList(false);
+        setGoongError('Không thể gợi ý địa chỉ. Vui lòng thử lại.');
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingSuggestions(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+      setIsLoadingSuggestions(false);
+    };
+  }, [searchQuery, canUseGoong, goongApiKey, isModalOpen]);
 
   const fetchBranches = async () => {
     setLoading(true);
@@ -220,6 +464,10 @@ const Store = () => {
       status: branch.status,
     });
     setMapPosition([branch.latitude, branch.longitude]);
+    setSearchQuery(branch.address ?? '');
+    setGoongSuggestions([]);
+    setShowSuggestionList(false);
+    setGoongError('');
     setIsModalOpen(true);
   };
 
@@ -237,24 +485,95 @@ const Store = () => {
     setCurrentBranchCode(null);
     setIsEditing(false);
     setSearchQuery('');
+    setSelectedProvinceCode(null);
+    setSelectedDistrictCode(null);
+    setGoongSuggestions([]);
+    setShowSuggestionList(false);
+    setGoongError('');
   };
 
   const searchLocation = async () => {
-    if (!searchQuery) return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+
+    if (canUseGoong) {
+      if (goongSuggestions.length > 0) {
+        await handleSelectSuggestion(goongSuggestions[0]);
+        return;
+      }
+
+      try {
+        setIsSearchingLocation(true);
+        setGoongError('');
+        const response = await fetch(
+          `https://rsapi.goong.io/geocode?api_key=${goongApiKey}&address=${encodeURIComponent(trimmed)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Goong geocode failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const firstResult = data?.results?.[0];
+
+        if (firstResult) {
+          const compound = firstResult.compound ?? {};
+          const location = firstResult.geometry?.location;
+          const parsedLat = location?.lat !== undefined ? Number(location.lat) : undefined;
+          const parsedLng = location?.lng !== undefined ? Number(location.lng) : undefined;
+
+          setNewBranch((prev) => {
+            const updated = {
+              ...prev,
+              city: compound.city || compound.province || prev.city,
+              district: compound.district || prev.district,
+              address: firstResult.formatted_address || trimmed,
+              latitude: parsedLat ?? prev.latitude,
+              longitude: parsedLng ?? prev.longitude,
+            };
+            prefillLocationSelections(updated.city, updated.district);
+            return updated;
+          });
+
+          if (parsedLat !== undefined && parsedLng !== undefined) {
+            setMapPosition([parsedLat, parsedLng]);
+          }
+
+          toast.success('Đã tìm thấy vị trí!');
+          setShowSuggestionList(false);
+          setGoongSuggestions([]);
+        } else {
+          setGoongError('Không tìm thấy địa chỉ phù hợp. Vui lòng thử từ khóa khác.');
+          toast.error('Không tìm thấy vị trí. Vui lòng thử lại!');
+        }
+      } catch (error) {
+        console.error('Error searching location with Goong:', error);
+        setGoongError('Có lỗi khi tìm kiếm địa chỉ. Vui lòng thử lại.');
+        toast.error('Lỗi khi tìm kiếm vị trí. Vui lòng thử lại!');
+      } finally {
+        setIsSearchingLocation(false);
+      }
+      return;
+    }
+
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmed)}`
       );
       const data = await response.json();
       if (data.length > 0) {
         const { lat, lon } = data[0];
-        setMapPosition([parseFloat(lat), parseFloat(lon)]);
+        const parsedLat = parseFloat(lat);
+        const parsedLng = parseFloat(lon);
+        setMapPosition([parsedLat, parsedLng]);
         setNewBranch((prev) => ({
           ...prev,
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lon),
+          latitude: parsedLat,
+          longitude: parsedLng,
         }));
         toast.success('Đã tìm thấy vị trí!');
+        setShowSuggestionList(false);
+        setGoongSuggestions([]);
       } else {
         toast.error('Không tìm thấy vị trí. Vui lòng thử lại!');
       }
@@ -468,25 +787,73 @@ const Store = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Thành phố *</label>
-                    <input
-                      type="text"
-                      value={newBranch.city}
-                      onChange={(e) => setNewBranch({ ...newBranch, city: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      placeholder="Nhập thành phố"
-                    />
+                    {locationHierarchy.length > 0 ? (
+                      <select
+                        value={selectedProvinceCode !== null ? selectedProvinceCode.toString() : ''}
+                        onChange={handleProvinceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                        disabled={locationLoading}
+                        required
+                      >
+                        <option value="" disabled>
+                          Chọn Tỉnh/Thành phố
+                        </option>
+                        {locationHierarchy.map((province) => (
+                          <option key={province.code} value={province.code.toString()}>
+                            {province.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={newBranch.city}
+                        onChange={(e) => setNewBranch({ ...newBranch, city: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="Nhập thành phố"
+                      />
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Quận/Huyện *</label>
-                    <input
-                      type="text"
-                      value={newBranch.district}
-                      onChange={(e) => setNewBranch({ ...newBranch, district: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      placeholder="Nhập quận/huyện"
-                    />
+                    {locationHierarchy.length > 0 ? (
+                      <select
+                        value={selectedDistrictCode !== null ? selectedDistrictCode.toString() : ''}
+                        onChange={handleDistrictChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                        disabled={!selectedProvinceCode || locationLoading}
+                        required
+                      >
+                        <option value="" disabled>
+                          Chọn Quận/Huyện
+                        </option>
+                        {districtOptions.map((district) => (
+                          <option key={district.code} value={district.code.toString()}>
+                            {district.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={newBranch.district}
+                        onChange={(e) => setNewBranch({ ...newBranch, district: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                        placeholder="Nhập quận/huyện"
+                      />
+                    )}
                   </div>
+
+                  {locationHierarchy.length > 0 && (locationLoading || locationError) && (
+                    <div className="md:col-span-2 text-sm">
+                      {locationLoading && (
+                        <span className="text-gray-500">Đang tải danh sách địa lý...</span>
+                      )}
+                      {locationLoading && locationError && ' '}
+                      {locationError && <span className="text-red-500">{locationError}</span>}
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ *</label>
@@ -501,21 +868,66 @@ const Store = () => {
 
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm vị trí</label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                        placeholder="Nhập địa chỉ để tìm kiếm vị trí..."
-                      />
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setSearchQuery(value);
+                            if (canUseGoong) {
+                              setShowSuggestionList(true);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (canUseGoong && goongSuggestions.length > 0) {
+                              setShowSuggestionList(true);
+                            }
+                          }}
+                          onBlur={() => window.setTimeout(() => setShowSuggestionList(false), 150)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                          placeholder={canUseGoong ? 'Nhập địa chỉ hoặc địa danh, hệ thống gợi ý tự động' : 'Nhập địa chỉ để tìm kiếm vị trí...'}
+                        />
+                        {canUseGoong && showSuggestionList && goongSuggestions.length > 0 && (
+                          <ul className="absolute z-20 mt-1 w-full rounded border border-gray-200 bg-white shadow max-h-52 overflow-y-auto">
+                            {goongSuggestions.map((suggestion) => (
+                              <li
+                                key={suggestion.place_id}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  void handleSelectSuggestion(suggestion);
+                                }}
+                                className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+                              >
+                                <p className="font-medium text-sm text-gray-900">
+                                  {suggestion.structured_formatting?.main_text || suggestion.description}
+                                </p>
+                                {suggestion.structured_formatting?.secondary_text && (
+                                  <p className="text-xs text-gray-500">
+                                    {suggestion.structured_formatting.secondary_text}
+                                  </p>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {canUseGoong && isLoadingSuggestions && (
+                          <span className="absolute right-3 top-3 text-xs text-gray-400">Đang gợi ý...</span>
+                        )}
+                      </div>
                       <button
                         onClick={searchLocation}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        className="inline-flex items-center justify-center gap-2 rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-60"
+                        disabled={isSearchingLocation}
                       >
                         <FiSearch className="h-5 w-5" />
+                        {isSearchingLocation ? 'Đang tìm...' : 'Tìm'}
                       </button>
                     </div>
+                    {canUseGoong && goongError && (
+                      <p className="mt-1 text-sm text-red-500">{goongError}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">

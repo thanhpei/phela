@@ -9,7 +9,7 @@
         {
           "id":2,
           "title": "Câu chuyện thương hiệu",
-          "link": "/#",
+          "link": "/ve-chung-toi",
           "subMenu": [
             {
               "title": "Về Phê La",
@@ -42,7 +42,7 @@
         {
           "id":6,
           "title": "Thẻ thành viên",
-          "link": "/#",
+          "link": "/dieu-khoan-va-dieu-kien-su-dung-the-thanh-vien-phe-la",
           "subMenu": [
               {
                   "title": "Điều khoản & điều lệ",

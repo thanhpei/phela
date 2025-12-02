@@ -150,10 +150,11 @@ public class AuthenticationService {
         String username = userDetails.getUsername();
 
         if (userDetails instanceof Customer customer) {
-            return new AuthenticationResponse(jwtToken, username, customer.getRole().name(), expiresAt);
+            String role = extractRoleFromEntity(customer, extractRole(userDetails));
+            return new AuthenticationResponse(jwtToken, username, role, expiresAt);
         } else if (userDetails instanceof Admin admin) {
-            Roles role = admin.getRole();
-            return new AuthenticationResponse(jwtToken, username, role.name(), expiresAt);
+            String role = extractRoleFromEntity(admin, extractRole(userDetails));
+            return new AuthenticationResponse(jwtToken, username, role, expiresAt);
         }
 
         throw new RuntimeException("UserDetails không hợp lệ để tạo AuthenticationResponse.");
@@ -198,6 +199,14 @@ public class AuthenticationService {
                 .findFirst()
                 .map(grantedAuthority -> grantedAuthority.getAuthority().replace("ROLE_", ""))
                 .orElse("UNKNOWN");
+    }
+
+    private String extractRoleFromEntity(Customer customer, String fallback) {
+        return customer.getRole() != null ? customer.getRole().name() : fallback;
+    }
+
+    private String extractRoleFromEntity(Admin admin, String fallback) {
+        return admin.getRole() != null ? admin.getRole().name() : fallback;
     }
 
     @Transactional
