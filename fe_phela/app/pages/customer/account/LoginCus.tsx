@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaFacebookF, FaGoogle } from "react-icons/fa";
 import { useAuth } from "~/AuthContext"; //
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '~/config/axios';
 import { sendOtpForCustomerPasswordReset, verifyOtpAndResetCustomerPassword } from '~/services/authServices';
@@ -146,7 +146,6 @@ const LoginCustomer = () => {
 
     return (
         <div className="flex flex-col justify-center items-center p-10 bg-white h-screen">
-            <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
             <h2 className="text-3xl font-bold mb-6">Login</h2>
             <input
                 type="text"

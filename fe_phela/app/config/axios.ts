@@ -34,16 +34,23 @@ api.interceptors.response.use(
     console.error('API Error:', error);
 
     if (error.response?.status === 401) {
-      // Nếu lỗi 401 (Unauthorized), đăng xuất và chuyển hướng về trang đăng nhập
+      const storedUserRaw = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      const storedUser = storedUserRaw ? JSON.parse(storedUserRaw) : null;
+
+      // Skip hard redirects for unauthenticated flows (e.g. invalid login attempts)
+      if (!storedUser && !storedToken) {
+        return Promise.reject(error);
+      }
+
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
-      // Determine redirect based on current role
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.type === 'admin') {
-        window.location.href = '/admin/login';
+      const redirectRole = storedUser?.type ?? import.meta.env.VITE_ROLE;
+      if (redirectRole === 'admin') {
+        window.location.href = '/admin';
       } else {
-        window.location.href = '/customer/login';
+        window.location.href = '/login-register';
       }
     }
 
