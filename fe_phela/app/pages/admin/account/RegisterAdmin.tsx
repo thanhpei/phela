@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from '~/services/authServices';
 import { toast } from 'react-toastify';
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 const RegisterAdmin = () => {
     const navigate = useNavigate();
@@ -110,10 +111,10 @@ const RegisterAdmin = () => {
                 <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    className="absolute inset-y-0 right-2 flex items-center text-lg text-gray-500 hover:text-gray-700"
                     aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                    {showPassword ? "Ẩn" : "Hiện"}
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
                 </button>
             </div>
             <div className="relative">
@@ -127,10 +128,10 @@ const RegisterAdmin = () => {
                 <button
                     type="button"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-2 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    className="absolute inset-y-0 right-2 flex items-center text-lg text-gray-500 hover:text-gray-700"
                     aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                    {showConfirmPassword ? "Ẩn" : "Hiện"}
+                    {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
                 </button>
             </div>
             <input
