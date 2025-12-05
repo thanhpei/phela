@@ -55,7 +55,7 @@ Nếu không dùng Blueprint, có thể deploy manual từng service:
 ### 3. Sau khi Deploy
 
 **URLs sẽ có dạng:**
-- Backend: `https://phela-backend.onrender.com`
+- Backend: `https://phela-backend-dyl7.onrender.com`
 - Customer: `https://phela-customer.onrender.com`
 - Admin: `https://phela-admin.onrender.com`
 
@@ -68,7 +68,7 @@ CORS_ALLOWED_ORIGINS=https://your-customer-app.onrender.com,https://your-admin-a
 
 **Backend:**
 ```bash
-curl https://phela-backend.onrender.com/healthz
+curl https://phela-backend-dyl7.onrender.com/healthz
 ```
 
 **Frontend:**

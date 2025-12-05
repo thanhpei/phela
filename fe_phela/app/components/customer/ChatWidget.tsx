@@ -35,7 +35,7 @@ const ChatWidget = () => {
         if (stompClientRef.current && stompClientRef.current.connected) return;
 
         const client = new Client({
-            webSocketFactory: () => new SockJS('https://phela-backend.onrender.com/ws'),
+            webSocketFactory: () => new SockJS('https://phela-backend-dyl7.onrender.com/ws'),
             onConnect: () => {
                 console.log('Connected to chat server!');
                 client.subscribe(`/topic/chat/${currentCustomerId}`, (message) => {
@@ -182,7 +182,7 @@ const ChatWidget = () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch('https://phela-backend.onrender.com/api/chat/uploadImage', {
+            const response = await fetch('https://phela-backend-dyl7.onrender.com/api/chat/uploadImage', {
                 method: 'POST',
                 body: formData,
             });

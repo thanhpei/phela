@@ -230,13 +230,13 @@ public class CartService implements ICartService {
                 LocalDateTime.now().isAfter(promotion.getEndDate())) {
             log.warn("Promotion {} is not valid. Status: {}, Start: {}, End: {}",
                     promotionCode, promotion.getStatus(), promotion.getStartDate(), promotion.getEndDate());
-            throw new RuntimeException("Promotion is not valid or expired");
+            throw new RuntimeException("Khuyến mãi không có hiệu lực hoặc đã hết hạn");
         }
 
         if (cart.getPromotionCarts().stream()
                 .anyMatch(pc -> pc.getPromotion().getPromotionId().equals(promotion.getPromotionId()))) {
             log.warn("Promotion {} already applied to cart {}", promotionCode, cartId);
-            throw new RuntimeException("Promotion already applied to cart");
+            throw new RuntimeException("Khuyến mãi đã được áp dụng vào giỏ hàng");
         }
 
         double cartTotal = calculateCartTotalFromItems(cart);
@@ -244,7 +244,7 @@ public class CartService implements ICartService {
         if (promotion.getMinimumOrderAmount() != null && cartTotal < promotion.getMinimumOrderAmount()) {
             log.warn("Cart total {} does not meet minimum order {} for promotion {}",
                     cartTotal, promotion.getMinimumOrderAmount(), promotionCode);
-            throw new RuntimeException("Cart total amount does not meet minimum order requirement");
+            throw new RuntimeException("Tổng số tiền trong giỏ hàng không đáp ứng yêu cầu đặt hàng tối thiểu");
         }
 
         double discount = calculateDiscountAmount(promotion, cartTotal);
