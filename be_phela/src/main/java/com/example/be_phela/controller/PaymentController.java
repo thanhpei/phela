@@ -17,7 +17,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -44,25 +43,21 @@ public class PaymentController {
                     order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
                     .orElseThrow(() -> new RuntimeException("Order not found with code: " + paymentDTO.getOrderInfo()));
 
-                String numericOrderCode = order.getOrderCode().replaceAll("[^0-9]", "");
-                if (numericOrderCode.isEmpty()) {
+                    String numericOrderCode = order.getOrderCode().replaceAll("[^0-9]", "");
+                    if (numericOrderCode.isEmpty()) {
                     throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
                 }
 
-                // Tạo danh sách sản phẩm chi tiết để gửi PayOS
-                List<PayOSPaymentRequest.PayOSItem> items = order.getOrderItems().stream()
-                    .map(orderItem -> PayOSPaymentRequest.PayOSItem.builder()
-                        .name(orderItem.getProduct() != null ? orderItem.getProduct().getProductName() : "Sản phẩm")
-                        .quantity(orderItem.getQuantity())
-                        .price(convertToVndAmount(orderItem.getAmount(), orderItem.getQuantity()))
-                        .build())
-                    .collect(Collectors.toList());
+                    long amountInVnd = convertToVndAmount(order.getFinalAmount());
 
-                if (items.isEmpty()) {
-                throw new IllegalStateException("Order does not contain any items");
-                }
-
-                long amountInVnd = convertToVndAmount(order.getFinalAmount(), 1);
+                    // Gom toàn bộ giá trị vào một dòng để tránh sai lệch giữa tổng tiền và danh sách sản phẩm
+                    List<PayOSPaymentRequest.PayOSItem> items = List.of(
+                        PayOSPaymentRequest.PayOSItem.builder()
+                            .name("Thanh toán đơn hàng " + order.getOrderCode())
+                            .quantity(1)
+                            .price(amountInVnd)
+                            .build()
+                    );
 
             // Tạo request cho PayOS
             PayOSPaymentRequest payOSRequest = PayOSPaymentRequest.builder()
@@ -152,11 +147,9 @@ public class PaymentController {
                 order.getAddress().getCity());
     }
 
-    private long convertToVndAmount(Double amount, Integer quantity) {
+    private long convertToVndAmount(Double amount) {
         double rawAmount = amount != null ? amount : 0.0d;
-        int divisor = (quantity != null && quantity > 0) ? quantity : 1;
-        double perUnit = rawAmount / divisor;
-        return BigDecimal.valueOf(perUnit)
+        return BigDecimal.valueOf(rawAmount)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact();
     }

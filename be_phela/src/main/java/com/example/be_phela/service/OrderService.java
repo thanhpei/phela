@@ -306,10 +306,12 @@ public class OrderService implements IOrderService {
     @Transactional
     public void rollbackOrderDueToPaymentFailure(String orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+            .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
 
-        restoreCartFromOrder(order);
-        orderRepository.delete(order);
+        if (order.getPaymentStatus() == PaymentStatus.AWAITING_PAYMENT) {
+            restoreCartFromOrder(order);
+            orderRepository.delete(order);
+        }
     }
 
     private void restoreCartFromOrder(Order order) {

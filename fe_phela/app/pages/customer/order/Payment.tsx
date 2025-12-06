@@ -61,6 +61,10 @@ const Payment = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
 
+  const getBankTransferFallbackUrl = () => {
+    const paymentMethodPath = encodeURIComponent('BANK_TRANSFER');
+    return `/cart?retryPaymentMethod=${paymentMethodPath}`;
+  };
   const fetchProductDetails = async (productId: string): Promise<Product> => {
     try {
       const response = await api.get(`/api/product/get/${productId}`);
@@ -158,7 +162,7 @@ const Payment = () => {
       alert(errorMessage);
       setIsProcessing(false);
       if (paymentMethod === 'BANK_TRANSFER') {
-        navigate('/cart');
+        navigate(getBankTransferFallbackUrl());
       }
     }
   };
