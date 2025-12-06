@@ -198,19 +198,19 @@ public class PaymentController {
     }
 
     private String buildFullAddress(Order order) {
-        String fullAddress = String.format("%s, %s, %s, %s",
-                order.getAddress().getDetailedAddress(),
-                order.getAddress().getWard(),
+        // Chỉ lấy thông tin quan trọng nhất cho PayOS, tránh vượt giới hạn
+        String shortAddress = String.format("%s, %s, %s",
                 order.getAddress().getDistrict(),
-                order.getAddress().getCity());
+                order.getAddress().getCity(),
+                order.getAddress().getPhone());
         
-        // PayOS giới hạn buyerAddress tối đa 255 ký tự
-        if (fullAddress.length() > 255) {
-            log.warn("Address too long ({}), truncating to 255 chars: {}", fullAddress.length(), fullAddress);
-            return fullAddress.substring(0, 255);
+        // PayOS có thể giới hạn ngắn hơn 255, để an toàn chỉ dùng 100 ký tự
+        if (shortAddress.length() > 100) {
+            log.warn("Address too long ({}), truncating to 100 chars", shortAddress.length());
+            return shortAddress.substring(0, 100);
         }
         
-        return fullAddress;
+        return shortAddress;
     }
 
     private long convertToVndAmount(Double amount) {
