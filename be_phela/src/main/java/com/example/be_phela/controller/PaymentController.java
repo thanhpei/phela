@@ -71,38 +71,73 @@ public class PaymentController {
             }
 
             // Lấy thông tin order
-                    order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
+            order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
                     .orElseThrow(() -> new RuntimeException("Order not found with code: " + paymentDTO.getOrderInfo()));
 
-                    String numericOrderCode = order.getOrderCode().replaceAll("[^0-9]", "");
-                    if (numericOrderCode.isEmpty()) {
-                    throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
-                }
+            String numericOrderCode = order.getOrderCode().replaceAll("[^0-9]", "");
+            if (numericOrderCode.isEmpty()) {
+                throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
+            }
+            if (numericOrderCode.length() > 9) {
+                log.error("Order code {} has {} digits, PayOS requires max 9 digits", 
+                        order.getOrderCode(), numericOrderCode.length());
+                throw new IllegalStateException("Order code exceeds PayOS 9-digit limit: " + numericOrderCode);
+            }
+            
+            log.info("Processing payment for order {} (numeric: {})", order.getOrderCode(), numericOrderCode);
 
-                        long amountInVnd = convertToVndAmount(order.getFinalAmount());
-                        String description = buildPayOSDescription(numericOrderCode);
-                        String itemName = buildPayOSItemName(numericOrderCode);
+            long amountInVnd = convertToVndAmount(order.getFinalAmount());
+            if (amountInVnd < 1000) {
+                throw new IllegalStateException("Payment amount must be at least 1000 VND, got: " + amountInVnd);
+            }
+            
+            String description = buildPayOSDescription(numericOrderCode);
+            String itemName = buildPayOSItemName(numericOrderCode);
 
-                    // Gom toàn bộ giá trị vào một dòng để tránh sai lệch giữa tổng tiền và danh sách sản phẩm
-                    List<PayOSPaymentRequest.PayOSItem> items = List.of(
-                        PayOSPaymentRequest.PayOSItem.builder()
-                                .name(itemName)
-                            .quantity(1)
-                            .price(amountInVnd)
-                            .build()
-                    );
+            // Gom toàn bộ giá trị vào một dòng để tránh sai lệch giữa tổng tiền và danh sách sản phẩm
+            List<PayOSPaymentRequest.PayOSItem> items = List.of(
+                PayOSPaymentRequest.PayOSItem.builder()
+                        .name(itemName)
+                        .quantity(1)
+                        .price(amountInVnd)
+                        .build()
+            );
+            
+            log.info("PayOS payment details - Amount: {}, Description: {}, Item: {}", 
+                    amountInVnd, description, itemName);
 
+            // Validate buyer information
+            String buyerName = order.getAddress().getRecipientName();
+            String buyerEmail = order.getCustomer().getEmail();
+            String buyerPhone = order.getAddress().getPhone();
+            String buyerAddress = buildFullAddress(order);
+            
+            if (buyerName == null || buyerName.isBlank()) {
+                throw new IllegalStateException("Buyer name is required for PayOS");
+            }
+            if (buyerEmail == null || buyerEmail.isBlank()) {
+                throw new IllegalStateException("Buyer email is required for PayOS");
+            }
+            if (buyerPhone == null || buyerPhone.isBlank()) {
+                throw new IllegalStateException("Buyer phone is required for PayOS");
+            }
+            
+            log.info("Buyer info - Name: {}, Email: {}, Phone: {}", buyerName, buyerEmail, buyerPhone);
+            
             // Tạo request cho PayOS
             PayOSPaymentRequest payOSRequest = PayOSPaymentRequest.builder()
-                    .orderCode(Long.parseLong(numericOrderCode)) // Chỉ lấy số
+                    .orderCode(Long.parseLong(numericOrderCode))
                     .amount(amountInVnd)
-                            .description(description)
+                    .description(description)
                     .items(items)
-                    .buyerName(order.getAddress().getRecipientName())
-                    .buyerEmail(order.getCustomer().getEmail())
-                    .buyerPhone(order.getAddress().getPhone())
-                    .buyerAddress(buildFullAddress(order))
+                    .buyerName(buyerName)
+                    .buyerEmail(buyerEmail)
+                    .buyerPhone(buyerPhone)
+                    .buyerAddress(buyerAddress)
                     .build();
+            
+            log.info("Sending PayOS request for order {} with orderCode {}", 
+                    order.getOrderCode(), numericOrderCode);
 
             // Gọi PayOS API
             PayOSPaymentResponse response = payOSService.createPaymentLink(payOSRequest);

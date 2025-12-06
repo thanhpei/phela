@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,7 +23,17 @@ import java.util.stream.Collectors;
 public class PayOSService {
 
     private final PayOSConfig payOSConfig;
-    private final OkHttpClient httpClient = new OkHttpClient();
+        private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(30);
+        private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
+        private static final Duration WRITE_TIMEOUT = Duration.ofSeconds(60);
+        private static final Duration CALL_TIMEOUT = Duration.ofSeconds(90);
+
+        private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .readTimeout(READ_TIMEOUT)
+            .writeTimeout(WRITE_TIMEOUT)
+            .callTimeout(CALL_TIMEOUT)
+            .build();
     private final Gson gson = new Gson();
 
     /**
