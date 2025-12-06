@@ -35,8 +35,8 @@ public class OrderService implements IOrderService {
     AdminRepository adminRepository;
 
     private String generateOrderCode() {
-        long count = orderRepository.count();
-        return String.format("ORD%05d", count + 1);
+        long epochMillis = System.currentTimeMillis();
+        return "ORD" + epochMillis;
     }
 
     @Override

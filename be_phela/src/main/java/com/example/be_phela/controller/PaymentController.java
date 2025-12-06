@@ -77,6 +77,7 @@ public class PaymentController {
                 if (!"00".equals(response.getCode())) {
                 String desc = response.getDesc() != null ? response.getDesc() : "PayOS trả về lỗi không xác định";
                 log.error("PayOS rejected order {} with code {}: {}", order.getOrderCode(), response.getCode(), desc);
+                safelyRollbackOrder(order);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of(
                         "status", "Error",
