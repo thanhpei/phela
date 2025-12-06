@@ -119,19 +119,20 @@ const Payment = () => {
 
     setIsProcessing(true);
 
-    const orderPayload = {
-      cartId: cart.cartId,
-      addressId: cart.address.addressId,
-      branchCode: cart.branch.branchCode,
-      paymentMethod: paymentMethod,
-    };
-
-    const response = await api.post('/api/order/create', orderPayload);
-    const newOrder = response.data;
-
     try {
-      if (paymentMethod === 'COD') {
+      const orderPayload = {
+        cartId: cart.cartId,
+        addressId: cart.address.addressId,
+        branchCode: cart.branch.branchCode,
+        paymentMethod: paymentMethod,
+      };
 
+      console.log('Creating order:', orderPayload);
+      const response = await api.post('/api/order/create', orderPayload);
+      const newOrder = response.data;
+      console.log('Order created:', newOrder);
+
+      if (paymentMethod === 'COD') {
         setOrderId(newOrder.orderId);
         setShowSuccessModal(true);
 
@@ -158,7 +159,9 @@ const Payment = () => {
       console.error("Error creating order:", err);
       let errorMessage = "Đã xảy ra lỗi khi tạo đơn hàng";
 
-      if (err.response?.status === 400) {
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = "Yêu cầu bị timeout. Vui lòng kiểm tra kết nối mạng và thử lại.";
+      } else if (err.response?.status === 400) {
         errorMessage = err.response?.data?.message || "Dữ liệu không hợp lệ";
       } else if (err.response?.status === 500) {
         errorMessage = "Lỗi hệ thống, vui lòng thử lại sau";

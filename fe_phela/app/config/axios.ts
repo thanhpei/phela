@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://phela-backend-dyl7
 // Tạo một instance của Axios
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // Thời gian chờ tối đa
+  timeout: 60000, // Tăng timeout lên 60s cho payment/order operations
   headers: {
     'Content-Type': 'application/json',
   },
