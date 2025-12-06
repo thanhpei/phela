@@ -58,6 +58,8 @@ const Payment = () => {
   const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BANK_TRANSFER'>('COD');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   const fetchProductDetails = async (productId: string): Promise<Product> => {
     try {
@@ -126,8 +128,8 @@ const Payment = () => {
     try {
       if (paymentMethod === 'COD') {
 
-        alert('Đặt hàng thành công! Đơn hàng của bạn đang được xử lý.');
-        navigate(`/my-orders/${newOrder.orderId}`);
+        setOrderId(newOrder.orderId);
+        setShowSuccessModal(true);
 
       } else if (paymentMethod === 'BANK_TRANSFER') {
         const paymentPayload = {
@@ -254,6 +256,39 @@ const Payment = () => {
             </button>
           </div>
         </div>
+
+        {/* Modal xác nhận đặt hàng thành công */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                  <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Đặt hàng thành công!</h3>
+                <p className="text-gray-600 mb-6">
+                  Đơn hàng của bạn đã được tạo và đang được xử lý. Cảm ơn bạn đã mua hàng!
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => navigate('/my-orders')}
+                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Xem đơn hàng
+                  </button>
+                  <button
+                    onClick={() => navigate(`/my-orders/${orderId}`)}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    Chi tiết đơn hàng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
