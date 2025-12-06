@@ -198,7 +198,7 @@ public class PaymentController {
     }
 
     private String buildFullAddress(Order order) {
-        return "Ha Noi, Viet Nam";
+        return order.getAddress().getPhone();
     }
 
     private long convertToVndAmount(Double amount) {

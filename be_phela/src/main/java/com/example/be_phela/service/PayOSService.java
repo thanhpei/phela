@@ -189,12 +189,10 @@ public class PayOSService {
         hmacSha256.init(secretKey);
         byte[] hash = hmacSha256.doFinal(sortedData.getBytes(StandardCharsets.UTF_8));
 
-        // Convert to hex
+        // Convert to uppercase hex as PayOS expects uppercase signature
         StringBuilder hexString = new StringBuilder();
         for (byte b : hash) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) hexString.append('0');
-            hexString.append(hex);
+            hexString.append(String.format("%02X", b));
         }
 
         return hexString.toString();
