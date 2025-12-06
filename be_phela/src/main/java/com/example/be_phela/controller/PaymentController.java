@@ -48,12 +48,14 @@ public class PaymentController {
                     throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
                 }
 
-                    long amountInVnd = convertToVndAmount(order.getFinalAmount());
+                        long amountInVnd = convertToVndAmount(order.getFinalAmount());
+                        String description = buildPayOSDescription(numericOrderCode);
+                        String itemName = buildPayOSItemName(numericOrderCode);
 
                     // Gom toàn bộ giá trị vào một dòng để tránh sai lệch giữa tổng tiền và danh sách sản phẩm
                     List<PayOSPaymentRequest.PayOSItem> items = List.of(
                         PayOSPaymentRequest.PayOSItem.builder()
-                            .name("Thanh toán đơn hàng " + order.getOrderCode())
+                                .name(itemName)
                             .quantity(1)
                             .price(amountInVnd)
                             .build()
@@ -63,7 +65,7 @@ public class PaymentController {
             PayOSPaymentRequest payOSRequest = PayOSPaymentRequest.builder()
                     .orderCode(Long.parseLong(numericOrderCode)) // Chỉ lấy số
                     .amount(amountInVnd)
-                    .description("Thanh toán đơn hàng " + order.getOrderCode())
+                            .description(description)
                     .items(items)
                     .buyerName(order.getAddress().getRecipientName())
                     .buyerEmail(order.getCustomer().getEmail())
@@ -153,6 +155,22 @@ public class PaymentController {
         return BigDecimal.valueOf(rawAmount)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact();
+    }
+
+    private String buildPayOSDescription(String numericOrderCode) {
+        String suffix = numericOrderCode.length() > 4
+                ? numericOrderCode.substring(numericOrderCode.length() - 4)
+                : numericOrderCode;
+        String description = ("PAY" + suffix).toUpperCase();
+        return description.length() > 9 ? description.substring(0, 9) : description;
+    }
+
+    private String buildPayOSItemName(String numericOrderCode) {
+        String suffix = numericOrderCode.length() > 4
+                ? numericOrderCode.substring(numericOrderCode.length() - 4)
+                : numericOrderCode;
+        String itemName = ("PAYORD" + suffix).toUpperCase();
+        return itemName.length() > 12 ? itemName.substring(0, 12) : itemName;
     }
 
     @GetMapping("/payment-return")
