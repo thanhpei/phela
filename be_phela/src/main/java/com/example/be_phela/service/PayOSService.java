@@ -51,17 +51,9 @@ public class PayOSService {
         if (request.getReturnUrl() == null || request.getReturnUrl().isBlank()) {
             throw new IllegalStateException("PayOS return URL is not configured");
         }
-        
-        log.info("PayOS URLs - Return: {}, Cancel: {}", request.getReturnUrl(), request.getCancelUrl());
-        log.info("PayOS Request - OrderCode: {}, Amount: {}, Description: {}", 
-                request.getOrderCode(), request.getAmount(), request.getDescription());
-        log.info("PayOS Buyer - Name: {}, Email: {}, Phone: {}", 
-                request.getBuyerName(), request.getBuyerEmail(), request.getBuyerPhone());
-        log.info("PayOS Items: {}", request.getItems());
 
         // Tạo signature sau khi payload đã hoàn chỉnh
         String signature = generateSignature(request);
-        log.info("PayOS Signature: {}", signature);
 
         String jsonBody = gson.toJson(request);
         log.info("PayOS Request Body: {}", jsonBody);
@@ -82,9 +74,9 @@ public class PayOSService {
 
         try (Response response = httpClient.newCall(httpRequest).execute()) {
             String responseBody = response.body() != null ? response.body().string() : "";
-            log.info("PayOS Response: {}", responseBody);
 
             if (!response.isSuccessful()) {
+                log.error("PayOS Error Response: {}", responseBody);
                 throw new RuntimeException("PayOS Error: " + response.code() + " - " + responseBody);
             }
 
@@ -107,7 +99,6 @@ public class PayOSService {
 
         try (Response response = httpClient.newCall(httpRequest).execute()) {
             String responseBody = response.body() != null ? response.body().string() : "";
-            log.info("PayOS Get Payment Info Response: {}", responseBody);
 
             if (!response.isSuccessful()) {
                 throw new RuntimeException("PayOS Error: " + response.code() + " - " + responseBody);
@@ -141,7 +132,6 @@ public class PayOSService {
 
         try (Response response = httpClient.newCall(httpRequest).execute()) {
             String responseBody = response.body() != null ? response.body().string() : "";
-            log.info("PayOS Cancel Response: {}", responseBody);
 
             if (!response.isSuccessful()) {
                 throw new RuntimeException("PayOS Cancel Error: " + response.code() + " - " + responseBody);
@@ -164,7 +154,6 @@ public class PayOSService {
 
         try (Response response = httpClient.newCall(httpRequest).execute()) {
             String responseBody = response.body() != null ? response.body().string() : "";
-            log.info("PayOS Invoice Info Response: {}", responseBody);
 
             if (!response.isSuccessful()) {
                 throw new RuntimeException("PayOS Error: " + response.code() + " - " + responseBody);
@@ -190,8 +179,6 @@ public class PayOSService {
                 .sorted(Map.Entry.comparingByKey())
                 .map(e -> e.getKey() + "=" + e.getValue())
                 .collect(Collectors.joining("&"));
-
-        log.info("Signature Data: {}", sortedData);
 
         // Tạo HMAC SHA256
         Mac hmacSha256 = Mac.getInstance("HmacSHA256");

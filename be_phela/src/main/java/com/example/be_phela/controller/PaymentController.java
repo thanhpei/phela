@@ -79,12 +79,9 @@ public class PaymentController {
                 throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
             }
             if (numericOrderCode.length() > 9) {
-                log.error("Order code {} has {} digits, PayOS requires max 9 digits", 
-                        order.getOrderCode(), numericOrderCode.length());
+                log.error("Order code {} exceeds PayOS 9-digit limit", order.getOrderCode());
                 throw new IllegalStateException("Order code exceeds PayOS 9-digit limit: " + numericOrderCode);
             }
-            
-            log.info("Processing payment for order {} (numeric: {})", order.getOrderCode(), numericOrderCode);
 
             long amountInVnd = convertToVndAmount(order.getFinalAmount());
             if (amountInVnd < 1000) {
@@ -102,9 +99,6 @@ public class PaymentController {
                         .price(amountInVnd)
                         .build()
             );
-            
-            log.info("PayOS payment details - Amount: {}, Description: {}, Item: {}", 
-                    amountInVnd, description, itemName);
 
             // Validate buyer information
             String buyerName = order.getAddress().getRecipientName();
@@ -122,8 +116,6 @@ public class PaymentController {
                 throw new IllegalStateException("Buyer phone is required for PayOS");
             }
             
-            log.info("Buyer info - Name: {}, Email: {}, Phone: {}", buyerName, buyerEmail, buyerPhone);
-            
             // Tạo request cho PayOS
             PayOSPaymentRequest payOSRequest = PayOSPaymentRequest.builder()
                     .orderCode(Long.parseLong(numericOrderCode))
@@ -135,9 +127,6 @@ public class PaymentController {
                     .buyerPhone(buyerPhone)
                     .buyerAddress(buyerAddress)
                     .build();
-            
-            log.info("Sending PayOS request for order {} with orderCode {}", 
-                    order.getOrderCode(), numericOrderCode);
 
             // Gọi PayOS API
             PayOSPaymentResponse response = payOSService.createPaymentLink(payOSRequest);
