@@ -141,11 +141,16 @@ const Payment = () => {
           orderInfo: newOrder.orderCode,
         };
 
+        console.log('Creating PayOS payment:', paymentPayload);
         const paymentUrlResponse = await api.post('/api/payment/create-payment', paymentPayload);
+        console.log('PayOS response:', paymentUrlResponse.data);
+        
         const paymentUrl = paymentUrlResponse.data.url;
         if (paymentUrl) {
+          console.log('Redirecting to PayOS:', paymentUrl);
           window.location.href = paymentUrl;
         } else {
+          console.error('PayOS response missing URL:', paymentUrlResponse.data);
           throw new Error("Không thể tạo URL thanh toán.");
         }
       }

@@ -1,6 +1,5 @@
 package com.example.be_phela.service;
 
-import com.sendgrid.Client;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
@@ -26,8 +25,6 @@ public class EmailService {
 
     @Value("${app.base-url}")
     private String baseUrl;
-
-    private static final int SENDGRID_TIMEOUT_MS = 60_000;
 
     public void sendVerificationEmail(String to, String token) {
         String verificationLink = baseUrl + "/verify?token=" + token;
@@ -96,7 +93,7 @@ public class EmailService {
         Content content = new Content("text/html", htmlContent);
         Mail mail = new Mail(fromEmailObj, subject, toEmailObj, content);
 
-        SendGrid sg = createSendGridClient();
+        SendGrid sg = new SendGrid(sendGridApiKey);
         Request request = new Request();
 
         try {
@@ -116,12 +113,5 @@ public class EmailService {
             log.error("Error sending email to {}", to, ex);
             throw new RuntimeException("Error sending email", ex);
         }
-    }
-
-    private SendGrid createSendGridClient() {
-        Client client = new Client();
-        client.setConnectTimeout(SENDGRID_TIMEOUT_MS);
-        client.setReadTimeout(SENDGRID_TIMEOUT_MS);
-        return new SendGrid(sendGridApiKey, client);
     }
 }
