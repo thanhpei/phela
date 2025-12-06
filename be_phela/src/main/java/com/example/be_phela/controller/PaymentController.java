@@ -209,11 +209,19 @@ public class PaymentController {
     }
 
     private String buildFullAddress(Order order) {
-        return String.format("%s, %s, %s, %s",
+        String fullAddress = String.format("%s, %s, %s, %s",
                 order.getAddress().getDetailedAddress(),
                 order.getAddress().getWard(),
                 order.getAddress().getDistrict(),
                 order.getAddress().getCity());
+        
+        // PayOS giới hạn buyerAddress tối đa 255 ký tự
+        if (fullAddress.length() > 255) {
+            log.warn("Address too long ({}), truncating to 255 chars: {}", fullAddress.length(), fullAddress);
+            return fullAddress.substring(0, 255);
+        }
+        
+        return fullAddress;
     }
 
     private long convertToVndAmount(Double amount) {
