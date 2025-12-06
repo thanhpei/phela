@@ -19,6 +19,7 @@ public class PayOSPaymentRequest {
     private String buyerEmail;
     private String buyerPhone;
     private String buyerAddress;
+    private String signature;
 
     @Data
     @Builder

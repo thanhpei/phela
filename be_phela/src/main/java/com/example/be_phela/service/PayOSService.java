@@ -55,6 +55,7 @@ public class PayOSService {
         // Tạo signature sau khi payload đã hoàn chỉnh
         String signature = generateSignature(request);
 
+        request.setSignature(signature);
         String jsonBody = gson.toJson(request);
         log.info("PayOS Request Body: {}", jsonBody);
 
@@ -68,7 +69,7 @@ public class PayOSService {
                 .post(body)
                 .addHeader("x-client-id", payOSConfig.getClientId())
                 .addHeader("x-api-key", payOSConfig.getApiKey())
-                .addHeader("x-signature", signature)
+            .addHeader("x-signature", signature)
                 .addHeader("Content-Type", "application/json")
                 .build();
 
