@@ -31,10 +31,18 @@ public class PayOSService {
     public PayOSPaymentResponse createPaymentLink(PayOSPaymentRequest request) throws Exception {
         String url = PayOSConfig.PAYOS_BASE_URL + "/v2/payment-requests";
 
-        // Tạo signature
-        String signature = generateSignature(request);
         request.setCancelUrl(payOSConfig.getCancelUrl());
         request.setReturnUrl(payOSConfig.getReturnUrl());
+
+        if (request.getCancelUrl() == null || request.getCancelUrl().isBlank()) {
+            throw new IllegalStateException("PayOS cancel URL is not configured");
+        }
+        if (request.getReturnUrl() == null || request.getReturnUrl().isBlank()) {
+            throw new IllegalStateException("PayOS return URL is not configured");
+        }
+
+        // Tạo signature sau khi payload đã hoàn chỉnh
+        String signature = generateSignature(request);
 
         String jsonBody = gson.toJson(request);
         log.info("PayOS Request Body: {}", jsonBody);
@@ -154,10 +162,10 @@ public class PayOSService {
         // Sắp xếp các trường theo thứ tự alphabet và nối chuỗi
         Map<String, String> dataMap = new HashMap<>();
         dataMap.put("amount", String.valueOf(request.getAmount()));
-        dataMap.put("cancelUrl", payOSConfig.getCancelUrl());
+        dataMap.put("cancelUrl", request.getCancelUrl());
         dataMap.put("description", request.getDescription());
         dataMap.put("orderCode", String.valueOf(request.getOrderCode()));
-        dataMap.put("returnUrl", payOSConfig.getReturnUrl());
+        dataMap.put("returnUrl", request.getReturnUrl());
 
         String sortedData = dataMap.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())

@@ -10,7 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PayOSPaymentRequest {
     private Long orderCode;
-    private Integer amount;
+    private Long amount;
     private String description;
     private List<PayOSItem> items;
     private String cancelUrl;
@@ -27,6 +27,6 @@ public class PayOSPaymentRequest {
     public static class PayOSItem {
         private String name;
         private Integer quantity;
-        private Integer price;
+        private Long price;
     }
 }

@@ -19,7 +19,7 @@ public class PayOSPaymentResponse {
         private String bin;
         private String accountNumber;
         private String accountName;
-        private Integer amount;
+        private Long amount;
         private String description;
         private Long orderCode;
         private String currency;

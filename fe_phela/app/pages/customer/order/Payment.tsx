@@ -157,6 +157,9 @@ const Payment = () => {
 
       alert(errorMessage);
       setIsProcessing(false);
+      if (paymentMethod === 'BANK_TRANSFER') {
+        navigate('/cart');
+      }
     }
   };
 

@@ -13,9 +13,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -28,6 +30,7 @@ public class PaymentController {
 
     @PostMapping("/create-payment")
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequestDTO paymentDTO) {
+        Order order = null;
         try {
             // Validate input
             if (paymentDTO.getAmount() <= 0) {
@@ -38,32 +41,57 @@ public class PaymentController {
             }
 
             // Lấy thông tin order
-            Order order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
+                    order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
                     .orElseThrow(() -> new RuntimeException("Order not found with code: " + paymentDTO.getOrderInfo()));
 
-            // Tạo items cho PayOS (optional nhưng recommended)
-            List<PayOSPaymentRequest.PayOSItem> items = new ArrayList<>();
-            items.add(PayOSPaymentRequest.PayOSItem.builder()
-                    .name("Đơn hàng " + order.getOrderCode())
-                    .quantity(1)
-                    .price((int) paymentDTO.getAmount())
-                    .build());
+                String numericOrderCode = order.getOrderCode().replaceAll("[^0-9]", "");
+                if (numericOrderCode.isEmpty()) {
+                    throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
+                }
+
+                // Tạo danh sách sản phẩm chi tiết để gửi PayOS
+                List<PayOSPaymentRequest.PayOSItem> items = order.getOrderItems().stream()
+                    .map(orderItem -> PayOSPaymentRequest.PayOSItem.builder()
+                        .name(orderItem.getProduct() != null ? orderItem.getProduct().getProductName() : "Sản phẩm")
+                        .quantity(orderItem.getQuantity())
+                        .price(convertToVndAmount(orderItem.getAmount(), orderItem.getQuantity()))
+                        .build())
+                    .collect(Collectors.toList());
+
+                if (items.isEmpty()) {
+                throw new IllegalStateException("Order does not contain any items");
+                }
+
+                long amountInVnd = convertToVndAmount(order.getFinalAmount(), 1);
 
             // Tạo request cho PayOS
             PayOSPaymentRequest payOSRequest = PayOSPaymentRequest.builder()
-                    .orderCode(Long.parseLong(order.getOrderCode().replaceAll("[^0-9]", ""))) // Chỉ lấy số
-                    .amount((int) paymentDTO.getAmount())
+                    .orderCode(Long.parseLong(numericOrderCode)) // Chỉ lấy số
+                    .amount(amountInVnd)
                     .description("Thanh toán đơn hàng " + order.getOrderCode())
                     .items(items)
                     .buyerName(order.getAddress().getRecipientName())
+                    .buyerEmail(order.getCustomer().getEmail())
                     .buyerPhone(order.getAddress().getPhone())
-                    .buyerAddress(order.getAddress().getDetailedAddress())
+                    .buyerAddress(buildFullAddress(order))
                     .build();
 
             // Gọi PayOS API
             PayOSPaymentResponse response = payOSService.createPaymentLink(payOSRequest);
 
-            if (response.getData() == null || response.getData().getCheckoutUrl() == null) {
+                if (!"00".equals(response.getCode())) {
+                String desc = response.getDesc() != null ? response.getDesc() : "PayOS trả về lỗi không xác định";
+                log.error("PayOS rejected order {} with code {}: {}", order.getOrderCode(), response.getCode(), desc);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                        "status", "Error",
+                        "code", response.getCode(),
+                        "message", desc
+                    ));
+                }
+
+                if (response.getData() == null || response.getData().getCheckoutUrl() == null) {
+                log.error("PayOS response missing data for order {}: {}", order.getOrderCode(), response);
                 throw new RuntimeException("Failed to create payment link");
             }
 
@@ -76,11 +104,61 @@ public class PaymentController {
                     "paymentLinkId", response.getData().getPaymentLinkId()
             ));
 
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            if (order != null) {
+                safelyRollbackOrder(order);
+            }
+            log.error("Invalid payment request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("status", "Error", "message", e.getMessage()));
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("PayOS Error")) {
+                if (order != null) {
+                    safelyRollbackOrder(order);
+                }
+            log.error("PayOS rejected payment creation: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("status", "Error", "message", e.getMessage()));
+            }
+            if (order != null) {
+                safelyRollbackOrder(order);
+            }
+            log.error("Unexpected runtime error while creating payment", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("status", "Error", "message", e.getMessage()));
         } catch (Exception e) {
+            if (order != null) {
+                safelyRollbackOrder(order);
+            }
             log.error("Error creating payment: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("status", "Error", "message", e.getMessage()));
         }
+    }
+
+    private void safelyRollbackOrder(Order order) {
+        try {
+            orderService.rollbackOrderDueToPaymentFailure(order.getOrderId());
+        } catch (Exception rollbackException) {
+            log.error("Failed to rollback order {} after payment error", order.getOrderCode(), rollbackException);
+        }
+    }
+
+    private String buildFullAddress(Order order) {
+        return String.format("%s, %s, %s, %s",
+                order.getAddress().getDetailedAddress(),
+                order.getAddress().getWard(),
+                order.getAddress().getDistrict(),
+                order.getAddress().getCity());
+    }
+
+    private long convertToVndAmount(Double amount, Integer quantity) {
+        double rawAmount = amount != null ? amount : 0.0d;
+        int divisor = (quantity != null && quantity > 0) ? quantity : 1;
+        double perUnit = rawAmount / divisor;
+        return BigDecimal.valueOf(perUnit)
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
     }
 
     @GetMapping("/payment-return")

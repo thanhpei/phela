@@ -15,6 +15,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -96,7 +97,9 @@ public class OrderService implements IOrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        cartService.clearCartItems(cart.getCartId());
+        if (orderCreateDTO.getPaymentMethod() == PaymentMethod.COD) {
+            cartService.clearCartItems(cart.getCartId());
+        }
 
         return convertToResponseDTO(savedOrder);
     }
@@ -117,6 +120,9 @@ public class OrderService implements IOrderService {
         order.setStatus(OrderStatus.CONFIRMED);
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
+
+    cartRepository.findByCustomer_CustomerId(order.getCustomer().getCustomerId())
+        .ifPresent(cart -> cartService.clearCartItems(cart.getCartId()));
 
         // Tích điểm khi chuyển khoản thành công
         Customer customer = order.getCustomer();
@@ -275,8 +281,91 @@ public class OrderService implements IOrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Order> getOrderByCode(String orderCode) {
-        return orderRepository.findByOrderCode(orderCode);
+        Optional<Order> orderOpt = orderRepository.findByOrderCode(orderCode);
+        orderOpt.ifPresent(order -> {
+            // Force initialize lazy associations needed for payment processing
+            if (order.getOrderItems() != null) {
+                order.getOrderItems().forEach(item -> {
+                    if (item.getProduct() != null) {
+                        item.getProduct().getProductName();
+                    }
+                });
+            }
+            if (order.getCustomer() != null) {
+                order.getCustomer().getEmail();
+            }
+            if (order.getAddress() != null) {
+                order.getAddress().getRecipientName();
+            }
+        });
+        return orderOpt;
+    }
+
+    @Transactional
+    public void rollbackOrderDueToPaymentFailure(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        restoreCartFromOrder(order);
+        orderRepository.delete(order);
+    }
+
+    private void restoreCartFromOrder(Order order) {
+        Customer customer = order.getCustomer();
+        if (customer == null) {
+            return;
+        }
+
+        Cart cart = cartRepository.findByCustomer_CustomerId(customer.getCustomerId())
+                .orElseGet(() -> cartService.createCartForCustomer(customer.getCustomerId()));
+
+        if (cart.getCartItems() == null) {
+            cart.setCartItems(new ArrayList<>());
+        }
+
+        if (cart.getPromotionCarts() != null) {
+            cart.getPromotionCarts().clear();
+        }
+
+        cart.setAddress(order.getAddress());
+        cart.setBranch(order.getBranch());
+
+        List<OrderItem> orderItems = order.getOrderItems();
+        if (orderItems == null || orderItems.isEmpty()) {
+            cartRepository.save(cart);
+            return;
+        }
+
+        for (OrderItem orderItem : orderItems) {
+            if (orderItem.getProduct() == null) {
+                continue;
+            }
+
+            CartItem existingItem = cart.getCartItems().stream()
+                    .filter(item -> item.getProduct().getProductId().equals(orderItem.getProduct().getProductId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existingItem != null) {
+                existingItem.setQuantity(existingItem.getQuantity() + orderItem.getQuantity());
+                existingItem.setAmount(existingItem.getAmount() + orderItem.getAmount());
+                existingItem.setNote(orderItem.getNote());
+            } else {
+                CartItem cartItem = CartItem.builder()
+                        .cart(cart)
+                        .product(orderItem.getProduct())
+                        .quantity(orderItem.getQuantity())
+                        .amount(orderItem.getAmount())
+                        .note(orderItem.getNote())
+                        .build();
+                cart.getCartItems().add(cartItem);
+            }
+        }
+
+        cart.setTotalAmount(cartService.calculateCartTotalFromItems(cart));
+        cartRepository.save(cart);
     }
 
     // Lấy danh sách hóa đơn theo trạng thái
