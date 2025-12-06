@@ -16,6 +16,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     List<Order> findByCustomer_CustomerIdOrderByOrderDateDesc(String customerId);
     Optional<Order> findByOrderCode(String orderCode);
+        boolean existsByOrderCode(String orderCode);
 
     // Tìm các đơn hàng theo một trạng thái cụ thể
     List<Order> findByStatus(OrderStatus status);

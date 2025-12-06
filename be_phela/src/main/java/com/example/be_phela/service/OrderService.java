@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,8 +36,20 @@ public class OrderService implements IOrderService {
     AdminRepository adminRepository;
 
     private String generateOrderCode() {
-        long epochMillis = System.currentTimeMillis();
-        return "ORD" + epochMillis;
+        String code;
+        int attempts = 0;
+        do {
+            int numericPart = ThreadLocalRandom.current().nextInt(100000000, 1000000000);
+            code = "ORD" + numericPart;
+            attempts++;
+        } while (orderRepository.existsByOrderCode(code) && attempts < 5);
+
+        if (orderRepository.existsByOrderCode(code)) {
+            long fallback = System.currentTimeMillis() % 1_000_000_000L;
+            code = "ORD" + String.format("%09d", fallback);
+        }
+
+        return code;
     }
 
     @Override

@@ -6,8 +6,11 @@ import com.example.be_phela.dto.response.PayOSPaymentResponse;
 import com.example.be_phela.model.Order;
 import com.example.be_phela.service.OrderService;
 import com.example.be_phela.service.PayOSService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +20,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 
 @Slf4j
 @RestController
@@ -26,6 +31,32 @@ public class PaymentController {
 
     private final OrderService orderService;
     private final PayOSService payOSService;
+    @Value("${frontend.customer-url:http://localhost:3000}")
+    private String frontendCustomerUrl;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private String buildFrontendRedirect(String pathAndQuery) {
+        if (frontendCustomerUrl == null || frontendCustomerUrl.isBlank()) {
+            return pathAndQuery;
+        }
+
+        String base = frontendCustomerUrl.trim();
+        String path = pathAndQuery.trim();
+
+        boolean baseEndsWithSlash = base.endsWith("/");
+        boolean pathStartsWithSlash = path.startsWith("/");
+
+        if (baseEndsWithSlash && pathStartsWithSlash) {
+            return base + path.substring(1);
+        }
+
+        if (!baseEndsWithSlash && !pathStartsWithSlash) {
+            return base + '/' + path;
+        }
+
+        return base + path;
+    }
 
     @PostMapping("/create-payment")
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequestDTO paymentDTO) {
@@ -184,26 +215,31 @@ public class PaymentController {
             log.info("Payment return params: {}", allParams);
 
             if (orderCode == null || orderCode.isEmpty()) {
-                return new RedirectView("http://localhost:3000/payment-return?status=failed&message=Invalid order code");
+                return new RedirectView(buildFrontendRedirect("/payment-return?status=failed&message=Invalid%20order%20code"));
             }
 
+            String normalizedOrderCode = orderCode.startsWith("ORD") ? orderCode : "ORD" + orderCode;
             // Lấy thông tin order
-            Order order = orderService.getOrderByCode(orderCode)
-                    .orElseThrow(() -> new RuntimeException("Order not found with code: " + orderCode));
+            Order order = orderService.getOrderByCode(normalizedOrderCode)
+                    .orElseThrow(() -> new RuntimeException("Order not found with code: " + normalizedOrderCode));
 
             // Kiểm tra trạng thái thanh toán
             if ("00".equals(code) && "PAID".equalsIgnoreCase(status)) {
                 // Thanh toán thành công
                 orderService.confirmBankTransferPayment(order.getOrderId());
-                return new RedirectView("http://localhost:3000/payment-return?status=success&orderId=" + order.getOrderId());
+                return new RedirectView(buildFrontendRedirect("/payment-return?status=success&orderId=" + order.getOrderId()));
             } else {
                 // Thanh toán thất bại hoặc bị hủy
-                return new RedirectView("http://localhost:3000/payment-return?status=failed&orderId=" + order.getOrderId());
+                orderService.rollbackOrderDueToPaymentFailure(order.getOrderId());
+                return new RedirectView(buildFrontendRedirect("/payment-return?status=failed&orderId=" + order.getOrderId()));
             }
 
         } catch (Exception e) {
             log.error("Error processing payment return: ", e);
-            return new RedirectView("http://localhost:3000/payment-return?status=error&message=" + e.getMessage());
+            String message = e.getMessage() != null
+                    ? URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8)
+                    : "Unexpected%20error";
+            return new RedirectView(buildFrontendRedirect("/payment-return?status=error&message=" + message));
         }
     }
 
@@ -224,9 +260,38 @@ public class PaymentController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signature");
             }
 
-            // Process webhook data here
-            // Parse payload và cập nhật trạng thái order
-            
+            JsonNode rootNode = OBJECT_MAPPER.readTree(payload);
+            JsonNode dataNode = rootNode.path("data");
+
+            if (dataNode.isMissingNode()) {
+                log.error("Webhook payload missing data node");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing data");
+            }
+
+            String rawOrderCode = dataNode.path("orderCode").asText(null);
+            String paymentStatus = dataNode.path("status").asText(null);
+
+            if (rawOrderCode == null || paymentStatus == null) {
+                log.error("Webhook payload missing orderCode or status: {}", dataNode);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing orderCode or status");
+            }
+
+            String normalizedOrderCode = rawOrderCode.startsWith("ORD") ? rawOrderCode : "ORD" + rawOrderCode;
+
+            orderService.getOrderByCode(normalizedOrderCode).ifPresentOrElse(order -> {
+                switch (paymentStatus.toUpperCase()) {
+                    case "PAID" -> {
+                        orderService.confirmBankTransferPayment(order.getOrderId());
+                        log.info("Order {} marked as PAID via webhook", normalizedOrderCode);
+                    }
+                    case "CANCELLED", "FAILED", "EXPIRED" -> {
+                        orderService.rollbackOrderDueToPaymentFailure(order.getOrderId());
+                        log.info("Order {} rolled back due to webhook status {}", normalizedOrderCode, paymentStatus);
+                    }
+                    default -> log.info("Webhook status {} for order {} ignored", paymentStatus, normalizedOrderCode);
+                }
+            }, () -> log.error("Order with code {} not found for webhook", normalizedOrderCode));
+
             return ResponseEntity.ok("Webhook processed");
         } catch (Exception e) {
             log.error("Error processing webhook: ", e);
