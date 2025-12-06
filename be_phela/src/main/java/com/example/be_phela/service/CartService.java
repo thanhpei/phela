@@ -38,6 +38,7 @@ public class CartService implements ICartService {
     PromotionRepository promotionRepository;
     CustomerRepository customerRepository;
     ProductRepository productRepository;
+    CartItemRepository cartItemRepository;
     AddressRepository addressRepository;
     BranchRepository branchRepository;
     BranchService branchService;
@@ -181,19 +182,21 @@ public class CartService implements ICartService {
 
     @Override
     @Transactional
-    public void removeCartItem(String cartId, String productId) {
+    public void removeCartItem(String cartId, String cartItemId) {
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new RuntimeException("Cart not found with id: " + cartId));
 
-        CartItem itemToRemove = cart.getCartItems().stream()
-                .filter(item -> item.getProduct().getProductId().equals(productId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Product with id " + productId + " not found in cart"));
+        CartItem itemToRemove = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("Cart item not found with id: " + cartItemId));
+
+        if (!itemToRemove.getCart().getCartId().equals(cartId)) {
+            throw new RuntimeException("Cart item does not belong to this cart");
+        }
 
         cart.getCartItems().remove(itemToRemove);
         cart.setTotalAmount(calculateCartTotalFromItems(cart));
         reapplyAllPromotions(cart); // Re-evaluate promotions after cart total changes
-        log.info("Removed item from cart: {}. Product: {}", cartId, productId);
+        log.info("Removed item from cart: {}. Cart item: {}", cartId, cartItemId);
         cartRepository.save(cart); //
     }
 

@@ -13,7 +13,7 @@ public interface ICartService {
     CartResponseDTO getCartByCustomerId(String customerId);
     void clearCartItems(String cartId);
     CartItem addOrUpdateCartItem(String cartId, CartItemDTO cartItemDTO);
-    void removeCartItem(String cartId, String productId);
+    void removeCartItem(String cartId, String cartItemId);
     double calculateCartTotalFromItems(Cart cart);
     void applyPromotionToCart(String cartId, String promotionCode);
     Integer countItemsInCart(String cartId);

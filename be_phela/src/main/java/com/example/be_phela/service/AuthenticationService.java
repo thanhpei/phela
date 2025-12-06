@@ -14,7 +14,6 @@ import com.example.be_phela.repository.VerificationTokenRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
-import jakarta.mail.MessagingException;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -89,7 +88,7 @@ public class AuthenticationService {
         adminService.saveAdmin(admin);
         verificationTokenRepository.save(verificationToken);
 
-        return buildResponse(admin.getUsername(), admin.getRole().name());
+        return buildRegistrationResponse(admin.getUsername(), admin.getRole().name());
     }
 
     // Đăng ký customer
@@ -120,7 +119,7 @@ public class AuthenticationService {
         customerService.saveCustomer(customer);
         verificationTokenRepository.save(verificationToken);
 
-        return buildResponse(customer.getUsername(), customer.getRole().name());
+        return buildRegistrationResponse(customer.getUsername(), customer.getRole().name());
     }
 
     // Đăng nhập Admin
@@ -161,24 +160,25 @@ public class AuthenticationService {
     }
 
     // Hàm sinh token và build AuthenticationResponse
-    private AuthenticationResponse buildResponse(String username, String role) {
-        String token = generateToken(username, role);
-        log.info("Đăng nhập thành công: username={}, role={}", username, role);
+        private AuthenticationResponse buildRegistrationResponse(String username, String role) {
+        log.info("Tạo tài khoản mới: username={}, role={} (chờ xác thực email)", username, role);
         return AuthenticationResponse.builder()
-                .token(token)
-                .username(username)
-                .role(role)
-                .build();
+            .token(null)
+            .username(username)
+            .role(role)
+            .expiresAt(null)
+            .build();
     }
 
     // Sinh JWT token
     private String generateToken(String username, String role) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
+        Instant expiryInstant = Instant.now().plus(jwtExpirationHours, ChronoUnit.HOURS);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(username)
                 .issuer("/")
                 .issueTime(new Date())
-                .expirationTime(Date.from(Instant.now().plus(18, ChronoUnit.HOURS)))
+            .expirationTime(Date.from(expiryInstant))
                 .claim("role", role)
                 .build();
 

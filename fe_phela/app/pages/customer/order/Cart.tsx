@@ -243,7 +243,7 @@ const Cart = () => {
       const itemToRemove = cartItems.find(item => item.cartItemId === cartItemId);
       if (!itemToRemove) return;
 
-      await api.delete(`/api/customer/cart/${cartId}/items/${itemToRemove.productId}`);
+      await api.delete(`/api/customer/cart/${cartId}/items/${itemToRemove.cartItemId}`);
       await updateFullCartState(customerId);
 
     } catch (err: any) {

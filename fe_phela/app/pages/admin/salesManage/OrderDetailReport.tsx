@@ -109,7 +109,7 @@ const OrderDetailReport = () => {
     }, [orderId]);
 
     const getPaymentMethodText = (method: string) => {
-        return method === 'COD' ? 'Thanh toán khi nhận hàng' : 'Đã thanh toán (VNPAY)';
+        return method === 'COD' ? 'Thanh toán khi nhận hàng' : 'Đã thanh toán (PayOS)';
     };
     
     const getStatusText = (status: string) => {

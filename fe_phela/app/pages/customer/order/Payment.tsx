@@ -240,8 +240,8 @@ const Payment = () => {
                 <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${paymentMethod === 'BANK_TRANSFER' ? 'border-primary bg-primary-light' : ''}`}>
                   <input type="radio" name="paymentMethod" value="BANK_TRANSFER" checked={paymentMethod === 'BANK_TRANSFER'} onChange={() => setPaymentMethod('BANK_TRANSFER')} className="h-4 w-4 text-primary focus:ring-primary" />
                   <div className="ml-3">
-                    <span className="font-medium">Thanh toán qua VNPAY</span>
-                    <p className="text-xs text-gray-500">Hỗ trợ Thẻ ATM, Thẻ quốc tế, QR Code.</p>
+                    <span className="font-medium">Thanh toán qua PayOS</span>
+                    <p className="text-xs text-gray-500">Hỗ trợ Chuyển khoản ngân hàng, QR Code.</p>
                   </div>
                 </label>
               </div>
