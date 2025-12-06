@@ -51,9 +51,17 @@ public class PayOSService {
         if (request.getReturnUrl() == null || request.getReturnUrl().isBlank()) {
             throw new IllegalStateException("PayOS return URL is not configured");
         }
+        
+        log.info("PayOS URLs - Return: {}, Cancel: {}", request.getReturnUrl(), request.getCancelUrl());
+        log.info("PayOS Request - OrderCode: {}, Amount: {}, Description: {}", 
+                request.getOrderCode(), request.getAmount(), request.getDescription());
+        log.info("PayOS Buyer - Name: {}, Email: {}, Phone: {}", 
+                request.getBuyerName(), request.getBuyerEmail(), request.getBuyerPhone());
+        log.info("PayOS Items: {}", request.getItems());
 
         // Tạo signature sau khi payload đã hoàn chỉnh
         String signature = generateSignature(request);
+        log.info("PayOS Signature: {}", signature);
 
         String jsonBody = gson.toJson(request);
         log.info("PayOS Request Body: {}", jsonBody);
