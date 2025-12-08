@@ -317,6 +317,28 @@ public class OrderService implements IOrderService {
     }
 
     @Transactional
+    public Optional<Order> getOrderByCodeWithLock(String orderCode) {
+        Optional<Order> orderOpt = orderRepository.findByOrderCodeWithLock(orderCode);
+        orderOpt.ifPresent(order -> {
+            // Force initialize lazy associations needed for payment processing
+            if (order.getOrderItems() != null) {
+                order.getOrderItems().forEach(item -> {
+                    if (item.getProduct() != null) {
+                        item.getProduct().getProductName();
+                    }
+                });
+            }
+            if (order.getCustomer() != null) {
+                order.getCustomer().getEmail();
+            }
+            if (order.getAddress() != null) {
+                order.getAddress().getRecipientName();
+            }
+        });
+        return orderOpt;
+    }
+
+    @Transactional
     public void rollbackOrderDueToPaymentFailure(String orderId) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));

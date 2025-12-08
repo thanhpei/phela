@@ -3,8 +3,10 @@ package com.example.be_phela.service;
 import com.example.be_phela.config.PayOSConfig;
 import com.example.be_phela.dto.request.PayOSPaymentRequest;
 import com.example.be_phela.dto.response.PayOSPaymentResponse;
-import com.google.gson.Gson;
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
@@ -13,28 +15,41 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PayOSService {
 
     private final PayOSConfig payOSConfig;
-        private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(30);
-        private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
-        private static final Duration WRITE_TIMEOUT = Duration.ofSeconds(60);
-        private static final Duration CALL_TIMEOUT = Duration.ofSeconds(90);
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration WRITE_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration CALL_TIMEOUT = Duration.ofSeconds(90);
 
-        private final OkHttpClient httpClient = new OkHttpClient.Builder()
+    private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT)
             .readTimeout(READ_TIMEOUT)
             .writeTimeout(WRITE_TIMEOUT)
             .callTimeout(CALL_TIMEOUT)
             .build();
-    private final Gson gson = new Gson();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    // Dedicated ObjectMapper for signature generation with strict settings
+    private final ObjectMapper signatureMapper;
+    
+    @SuppressWarnings("deprecation")
+    public PayOSService(PayOSConfig payOSConfig) {
+        this.payOSConfig = payOSConfig;
+        this.signatureMapper = new ObjectMapper();
+        this.signatureMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, false);
+        this.signatureMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        this.signatureMapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
+        // Disable unicode escaping to keep Vietnamese characters in UTF-8
+        // Using deprecated feature but required for PayOS signature compatibility
+        this.signatureMapper.getFactory().configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, false);
+    }
 
     /**
      * Tạo request thanh toán PayOS
@@ -52,24 +67,23 @@ public class PayOSService {
             throw new IllegalStateException("PayOS return URL is not configured");
         }
 
-        // Tạo signature sau khi payload đã hoàn chỉnh
+        // Tạo signature và set vào request body
         String signature = generateSignature(request);
-
         request.setSignature(signature);
-        String jsonBody = gson.toJson(request);
+        
+        // Tạo final JSON body (đã có signature)
+        String jsonBody = objectMapper.writeValueAsString(request);
         log.info("PayOS Request Body: {}", jsonBody);
 
         RequestBody body = RequestBody.create(
                 jsonBody,
-                MediaType.parse("application/json")
-        );
+                MediaType.parse("application/json"));
 
         Request httpRequest = new Request.Builder()
                 .url(url)
                 .post(body)
                 .addHeader("x-client-id", payOSConfig.getClientId())
                 .addHeader("x-api-key", payOSConfig.getApiKey())
-            .addHeader("x-signature", signature)
                 .addHeader("Content-Type", "application/json")
                 .build();
 
@@ -81,7 +95,7 @@ public class PayOSService {
                 throw new RuntimeException("PayOS Error: " + response.code() + " - " + responseBody);
             }
 
-            return gson.fromJson(responseBody, PayOSPaymentResponse.class);
+            return objectMapper.readValue(responseBody, PayOSPaymentResponse.class);
         }
     }
 
@@ -105,7 +119,7 @@ public class PayOSService {
                 throw new RuntimeException("PayOS Error: " + response.code() + " - " + responseBody);
             }
 
-            return gson.fromJson(responseBody, PayOSPaymentResponse.class);
+            return objectMapper.readValue(responseBody, PayOSPaymentResponse.class);
         }
     }
 
@@ -115,13 +129,12 @@ public class PayOSService {
     public void cancelPaymentLink(Long orderCode, String reason) throws Exception {
         String url = PayOSConfig.PAYOS_BASE_URL + "/v2/payment-requests/" + orderCode + "/cancel";
 
-        Map<String, String> cancelBody = new HashMap<>();
+        Map<String, String> cancelBody = new LinkedHashMap<>();
         cancelBody.put("cancellationReason", reason != null ? reason : "Người dùng hủy");
 
         RequestBody body = RequestBody.create(
-                gson.toJson(cancelBody),
-                MediaType.parse("application/json")
-        );
+                objectMapper.writeValueAsString(cancelBody),
+                MediaType.parse("application/json"));
 
         Request httpRequest = new Request.Builder()
                 .url(url)
@@ -166,37 +179,36 @@ public class PayOSService {
 
     /**
      * Tạo chữ ký xác thực (signature) cho PayOS request
+     * PayOS V2 expects: HMAC-SHA256 of exact JSON with 5 fields in specific order
      */
     private String generateSignature(PayOSPaymentRequest request) throws Exception {
-        // Sắp xếp các trường theo thứ tự alphabet và nối chuỗi
-        Map<String, String> dataMap = new HashMap<>();
-        dataMap.put("amount", String.valueOf(request.getAmount()));
-        dataMap.put("cancelUrl", request.getCancelUrl());
-        dataMap.put("description", request.getDescription());
-        dataMap.put("orderCode", String.valueOf(request.getOrderCode()));
-        dataMap.put("returnUrl", request.getReturnUrl());
+        // Build exact JSON payload with ONLY 5 required fields in correct order
+        Map<String, Object> signatureData = new LinkedHashMap<>();
+        signatureData.put("orderCode", request.getOrderCode());
+        signatureData.put("amount", request.getAmount());
+        signatureData.put("description", request.getDescription());
+        signatureData.put("cancelUrl", request.getCancelUrl());
+        signatureData.put("returnUrl", request.getReturnUrl());
 
-        String sortedData = dataMap.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(Collectors.joining("&"));
+        // Use dedicated signatureMapper to ensure deterministic JSON output
+        // No spaces, no unicode escaping, consistent field order
+        String jsonPayload = signatureMapper.writeValueAsString(signatureData);
+        log.info("Signature JSON: {}", jsonPayload);
 
-        // Tạo HMAC SHA256
         Mac hmacSha256 = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretKey = new SecretKeySpec(
+        SecretKeySpec keySpec = new SecretKeySpec(
                 payOSConfig.getChecksumKey().getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256"
-        );
-        hmacSha256.init(secretKey);
-        byte[] hash = hmacSha256.doFinal(sortedData.getBytes(StandardCharsets.UTF_8));
+                "HmacSHA256");
+        hmacSha256.init(keySpec);
 
-        // Convert to uppercase hex as PayOS expects uppercase signature
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : hash) {
-            hexString.append(String.format("%02X", b));
-        }
+        byte[] hash = hmacSha256.doFinal(jsonPayload.getBytes(StandardCharsets.UTF_8));
 
-        return hexString.toString();
+        // PayOS expects lowercase hex
+        StringBuilder hex = new StringBuilder();
+        for (byte b : hash)
+            hex.append(String.format("%02x", b));
+
+        return hex.toString();
     }
 
     /**
@@ -206,8 +218,7 @@ public class PayOSService {
         Mac hmacSha256 = Mac.getInstance("HmacSHA256");
         SecretKeySpec secretKey = new SecretKeySpec(
                 payOSConfig.getChecksumKey().getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256"
-        );
+                "HmacSHA256");
         hmacSha256.init(secretKey);
         byte[] hash = hmacSha256.doFinal(data.getBytes(StandardCharsets.UTF_8));
 

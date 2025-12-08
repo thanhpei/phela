@@ -2,7 +2,9 @@ package com.example.be_phela.repository;
 
 import com.example.be_phela.model.Order;
 import com.example.be_phela.model.enums.OrderStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,8 +17,13 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, String> {
 
     List<Order> findByCustomer_CustomerIdOrderByOrderDateDesc(String customerId);
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM orders o WHERE o.orderCode = :orderCode")
+    Optional<Order> findByOrderCodeWithLock(@Param("orderCode") String orderCode);
+    
     Optional<Order> findByOrderCode(String orderCode);
-        boolean existsByOrderCode(String orderCode);
+    boolean existsByOrderCode(String orderCode);
 
     // Tìm các đơn hàng theo một trạng thái cụ thể
     List<Order> findByStatus(OrderStatus status);

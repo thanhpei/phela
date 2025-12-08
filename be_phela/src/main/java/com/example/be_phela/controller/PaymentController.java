@@ -74,8 +74,8 @@ public class PaymentController {
                 throw new IllegalArgumentException("Order info is required");
             }
 
-            // Lấy thông tin order
-            order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
+            // Lấy thông tin order với pessimistic lock để tránh double payment
+            order = orderService.getOrderByCodeWithLock(paymentDTO.getOrderInfo())
                     .orElseThrow(() -> new RuntimeException("Order not found with code: " + paymentDTO.getOrderInfo()));
 
             Address address = order.getAddress();
@@ -215,19 +215,42 @@ public class PaymentController {
 
     private String buildFullAddress(Address address) {
         List<String> addressParts = new ArrayList<>();
+        
+        // Chỉ lấy detailedAddress và ward/district/city ngắn gọn
         if (address.getDetailedAddress() != null && !address.getDetailedAddress().isBlank()) {
-            addressParts.add(address.getDetailedAddress().trim());
+            String detail = address.getDetailedAddress().trim();
+            // Nếu detailedAddress đã chứa city/district, chỉ lấy phần đầu
+            if (detail.length() > 100) {
+                detail = detail.substring(0, 100);
+            }
+            addressParts.add(detail);
         }
+        
+        // Thêm ward/district/city ngắn gọn (bỏ prefix "Phường", "Quận", "Thành phố")
         if (address.getWard() != null && !address.getWard().isBlank()) {
-            addressParts.add(address.getWard().trim());
+            String ward = address.getWard().trim()
+                    .replaceFirst("^(Phường|Xã)\\s+", "");
+            addressParts.add(ward);
         }
         if (address.getDistrict() != null && !address.getDistrict().isBlank()) {
-            addressParts.add(address.getDistrict().trim());
+            String district = address.getDistrict().trim()
+                    .replaceFirst("^(Quận|Huyện|Thị xã|Thành phố)\\s+", "");
+            addressParts.add(district);
         }
         if (address.getCity() != null && !address.getCity().isBlank()) {
-            addressParts.add(address.getCity().trim());
+            String city = address.getCity().trim()
+                    .replaceFirst("^(Thành phố|Tỉnh)\\s+", "");
+            addressParts.add(city);
         }
-        return String.join(", ", addressParts);
+        
+        String fullAddress = String.join(", ", addressParts);
+        
+        // PayOS limit: 255 chars
+        if (fullAddress.length() > 255) {
+            fullAddress = fullAddress.substring(0, 252) + "...";
+        }
+        
+        return fullAddress;
     }
 
     private long convertToVndAmount(Double amount) {
@@ -242,7 +265,8 @@ public class PaymentController {
                 ? numericOrderCode.substring(numericOrderCode.length() - 4)
                 : numericOrderCode;
         String description = ("PAY" + suffix).toUpperCase();
-        return description.length() > 9 ? description.substring(0, 9) : description;
+        // PayOS limit: 32 chars
+        return description.length() > 32 ? description.substring(0, 32) : description;
     }
 
     private String buildPayOSItemName(String numericOrderCode) {
@@ -250,7 +274,8 @@ public class PaymentController {
                 ? numericOrderCode.substring(numericOrderCode.length() - 4)
                 : numericOrderCode;
         String itemName = ("PAYORD" + suffix).toUpperCase();
-        return itemName.length() > 12 ? itemName.substring(0, 12) : itemName;
+        // PayOS limit: 32 chars
+        return itemName.length() > 32 ? itemName.substring(0, 32) : itemName;
     }
 
     private Optional<Order> resolveOrderByPayOSCode(String rawOrderCode) {
@@ -316,6 +341,33 @@ public class PaymentController {
                     ? URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8)
                     : "Unexpected%20error";
             return new RedirectView(buildFrontendRedirect("/payment-return?status=error&message=" + message));
+        }
+    }
+
+    /**
+     * Xử lý cancel từ PayOS
+     */
+    @GetMapping("/payment-cancel")
+    public RedirectView paymentCancel(@RequestParam Map<String, String> allParams) {
+        try {
+            String orderCode = allParams.get("orderCode");
+            log.info("Payment cancel params: {}", allParams);
+
+            if (orderCode != null && !orderCode.isEmpty()) {
+                resolveOrderByPayOSCode(orderCode).ifPresent(order -> {
+                    try {
+                        orderService.rollbackOrderDueToPaymentFailure(order.getOrderId());
+                        log.info("Order {} rolled back due to payment cancellation", order.getOrderCode());
+                    } catch (Exception e) {
+                        log.error("Failed to rollback order {} after cancellation", order.getOrderCode(), e);
+                    }
+                });
+            }
+
+            return new RedirectView(buildFrontendRedirect("/payment-cancel"));
+        } catch (Exception e) {
+            log.error("Error processing payment cancel: ", e);
+            return new RedirectView(buildFrontendRedirect("/payment-cancel"));
         }
     }
 

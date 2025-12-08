@@ -1,5 +1,6 @@
 package com.example.be_phela.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
 
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonPropertyOrder({"orderCode", "amount", "description", "items", "cancelUrl", "returnUrl", "buyerName", "buyerEmail", "buyerPhone", "buyerAddress", "signature"})
 public class PayOSPaymentRequest {
     private Long orderCode;
     private Long amount;
