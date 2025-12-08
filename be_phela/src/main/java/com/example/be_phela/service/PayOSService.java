@@ -71,8 +71,8 @@ public class PayOSService {
         String signature = generateSignature(request);
         request.setSignature(signature);
         
-        // CRITICAL: Use signatureMapper for final body to ensure same JSON format as signature
-        String jsonBody = signatureMapper.writeValueAsString(request);
+        // Tạo final JSON body (đã có signature)
+        String jsonBody = objectMapper.writeValueAsString(request);
         log.info("PayOS Request Body: {}", jsonBody);
 
         RequestBody body = RequestBody.create(
@@ -182,34 +182,28 @@ public class PayOSService {
      * PayOS V2 expects: HMAC-SHA256 of exact JSON with 5 fields in specific order
      */
     private String generateSignature(PayOSPaymentRequest request) throws Exception {
-        // Build exact JSON payload with ONLY 5 required fields in correct order
-        Map<String, Object> signatureData = new LinkedHashMap<>();
-        signatureData.put("orderCode", request.getOrderCode());
-        signatureData.put("amount", request.getAmount());
-        signatureData.put("description", request.getDescription());
-        signatureData.put("cancelUrl", request.getCancelUrl());
-        signatureData.put("returnUrl", request.getReturnUrl());
 
-        // Use dedicated signatureMapper to ensure deterministic JSON output
-        // No spaces, no unicode escaping, consistent field order
-        String jsonPayload = signatureMapper.writeValueAsString(signatureData);
-        log.info("Signature JSON: {}", jsonPayload);
+    Map<String, Object> signatureData = new LinkedHashMap<>();
+    signatureData.put("orderCode", request.getOrderCode());
+    signatureData.put("amount", request.getAmount());
+    signatureData.put("description", request.getDescription());
 
-        Mac hmacSha256 = Mac.getInstance("HmacSHA256");
-        SecretKeySpec keySpec = new SecretKeySpec(
-                payOSConfig.getChecksumKey().getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256");
-        hmacSha256.init(keySpec);
+    String jsonPayload = signatureMapper.writeValueAsString(signatureData);
+    log.info("Signature JSON (V2 correct): {}", jsonPayload);
 
-        byte[] hash = hmacSha256.doFinal(jsonPayload.getBytes(StandardCharsets.UTF_8));
+    Mac hmacSha256 = Mac.getInstance("HmacSHA256");
+    SecretKeySpec keySpec = new SecretKeySpec(
+            payOSConfig.getChecksumKey().getBytes(StandardCharsets.UTF_8),
+            "HmacSHA256");
+    hmacSha256.init(keySpec);
 
-        // PayOS expects lowercase hex
-        StringBuilder hex = new StringBuilder();
-        for (byte b : hash)
-            hex.append(String.format("%02x", b));
+    byte[] hash = hmacSha256.doFinal(jsonPayload.getBytes(StandardCharsets.UTF_8));
+    StringBuilder hex = new StringBuilder();
+    for (byte b : hash) hex.append(String.format("%02x", b));
 
-        return hex.toString();
-    }
+    return hex.toString();
+}
+
 
     /**
      * Verify webhook signature from PayOS
