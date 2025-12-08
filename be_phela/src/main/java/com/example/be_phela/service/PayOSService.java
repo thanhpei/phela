@@ -3,10 +3,8 @@ package com.example.be_phela.service;
 import com.example.be_phela.config.PayOSConfig;
 import com.example.be_phela.dto.request.PayOSPaymentRequest;
 import com.example.be_phela.dto.response.PayOSPaymentResponse;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
@@ -20,6 +18,7 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PayOSService {
 
     private final PayOSConfig payOSConfig;
@@ -35,21 +34,6 @@ public class PayOSService {
             .callTimeout(CALL_TIMEOUT)
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    
-    // Dedicated ObjectMapper for signature generation with strict settings
-    private final ObjectMapper signatureMapper;
-    
-    @SuppressWarnings("deprecation")
-    public PayOSService(PayOSConfig payOSConfig) {
-        this.payOSConfig = payOSConfig;
-        this.signatureMapper = new ObjectMapper();
-        this.signatureMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, false);
-        this.signatureMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        this.signatureMapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
-        // Disable unicode escaping to keep Vietnamese characters in UTF-8
-        // Using deprecated feature but required for PayOS signature compatibility
-        this.signatureMapper.getFactory().configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, false);
-    }
 
     /**
      * Tạo request thanh toán PayOS
@@ -179,25 +163,33 @@ public class PayOSService {
 
     /**
      * Tạo chữ ký xác thực (signature) cho PayOS request
-     * PayOS V2 expects: HMAC-SHA256 of exact JSON with 5 fields in specific order
+     * PayOS V2 expects: HMAC-SHA256 of raw string concatenation in alphabetical order
+     * Format: amount=X&cancelUrl=Y&description=Z&orderCode=N&returnUrl=R
      */
     private String generateSignature(PayOSPaymentRequest request) throws Exception {
 
-    Map<String, Object> signatureData = new LinkedHashMap<>();
-    signatureData.put("orderCode", request.getOrderCode());
-    signatureData.put("amount", request.getAmount());
-    signatureData.put("description", request.getDescription());
+    String amount = String.valueOf(request.getAmount());
+    String cancelUrl = request.getCancelUrl();
+    String description = request.getDescription();
+    String orderCode = String.valueOf(request.getOrderCode());
+    String returnUrl = request.getReturnUrl();
 
-    String jsonPayload = signatureMapper.writeValueAsString(signatureData);
-    log.info("Signature JSON (V2 correct): {}", jsonPayload);
+    String dataStr = "amount=" + amount +
+                     "&cancelUrl=" + cancelUrl +
+                     "&description=" + description +
+                     "&orderCode=" + orderCode +
+                     "&returnUrl=" + returnUrl;
 
+    log.info("Signature String: {}", dataStr);
+
+    // Tạo HMAC-SHA256
     Mac hmacSha256 = Mac.getInstance("HmacSHA256");
     SecretKeySpec keySpec = new SecretKeySpec(
             payOSConfig.getChecksumKey().getBytes(StandardCharsets.UTF_8),
             "HmacSHA256");
     hmacSha256.init(keySpec);
 
-    byte[] hash = hmacSha256.doFinal(jsonPayload.getBytes(StandardCharsets.UTF_8));
+    byte[] hash = hmacSha256.doFinal(dataStr.getBytes(StandardCharsets.UTF_8));
     StringBuilder hex = new StringBuilder();
     for (byte b : hash) hex.append(String.format("%02x", b));
 
