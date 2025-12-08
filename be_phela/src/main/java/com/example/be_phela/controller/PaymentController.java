@@ -3,6 +3,8 @@ package com.example.be_phela.controller;
 import com.example.be_phela.dto.request.PayOSPaymentRequest;
 import com.example.be_phela.dto.request.PaymentRequestDTO;
 import com.example.be_phela.dto.response.PayOSPaymentResponse;
+import com.example.be_phela.model.Address;
+import com.example.be_phela.model.Customer;
 import com.example.be_phela.model.Order;
 import com.example.be_phela.service.OrderService;
 import com.example.be_phela.service.PayOSService;
@@ -18,8 +20,10 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
 
@@ -74,6 +78,15 @@ public class PaymentController {
             order = orderService.getOrderByCode(paymentDTO.getOrderInfo())
                     .orElseThrow(() -> new RuntimeException("Order not found with code: " + paymentDTO.getOrderInfo()));
 
+            Address address = order.getAddress();
+            Customer customer = order.getCustomer();
+            if (address == null) {
+                throw new IllegalStateException("Order is missing shipping address information");
+            }
+            if (customer == null) {
+                throw new IllegalStateException("Order is missing customer information");
+            }
+
             String numericOrderCode = order.getOrderCode().replaceAll("[^0-9]", "");
             if (numericOrderCode.isEmpty()) {
                 throw new IllegalStateException("Order code is missing numeric characters required by PayOS");
@@ -101,10 +114,10 @@ public class PaymentController {
             );
 
             // Validate buyer information
-            String buyerName = order.getAddress().getRecipientName();
-            String buyerEmail = order.getCustomer().getEmail();
-            String buyerPhone = order.getAddress().getPhone();
-            String buyerAddress = buildFullAddress(order);
+            String buyerName = address.getRecipientName();
+            String buyerEmail = customer.getEmail();
+            String buyerPhone = address.getPhone();
+            String buyerAddress = buildFullAddress(address);
             
             if (buyerName == null || buyerName.isBlank()) {
                 throw new IllegalStateException("Buyer name is required for PayOS");
@@ -114,6 +127,9 @@ public class PaymentController {
             }
             if (buyerPhone == null || buyerPhone.isBlank()) {
                 throw new IllegalStateException("Buyer phone is required for PayOS");
+            }
+            if (buyerAddress == null || buyerAddress.isBlank()) {
+                throw new IllegalStateException("Buyer address is required for PayOS");
             }
             
             // Tạo request cho PayOS
@@ -197,8 +213,21 @@ public class PaymentController {
         }
     }
 
-    private String buildFullAddress(Order order) {
-        return order.getAddress().getPhone();
+    private String buildFullAddress(Address address) {
+        List<String> addressParts = new ArrayList<>();
+        if (address.getDetailedAddress() != null && !address.getDetailedAddress().isBlank()) {
+            addressParts.add(address.getDetailedAddress().trim());
+        }
+        if (address.getWard() != null && !address.getWard().isBlank()) {
+            addressParts.add(address.getWard().trim());
+        }
+        if (address.getDistrict() != null && !address.getDistrict().isBlank()) {
+            addressParts.add(address.getDistrict().trim());
+        }
+        if (address.getCity() != null && !address.getCity().isBlank()) {
+            addressParts.add(address.getCity().trim());
+        }
+        return String.join(", ", addressParts);
     }
 
     private long convertToVndAmount(Double amount) {
@@ -224,6 +253,35 @@ public class PaymentController {
         return itemName.length() > 12 ? itemName.substring(0, 12) : itemName;
     }
 
+    private Optional<Order> resolveOrderByPayOSCode(String rawOrderCode) {
+        if (rawOrderCode == null || rawOrderCode.isBlank()) {
+            return Optional.empty();
+        }
+
+        String digitsOnly = rawOrderCode.replaceAll("[^0-9]", "");
+        if (!digitsOnly.isEmpty()) {
+            Optional<Order> directMatch = orderService.getOrderByCode("ORD" + digitsOnly);
+            if (directMatch.isPresent()) {
+                return directMatch;
+            }
+
+            try {
+                String paddedDigits = String.format("%09d", Long.parseLong(digitsOnly));
+                if (!paddedDigits.equals(digitsOnly)) {
+                    Optional<Order> paddedMatch = orderService.getOrderByCode("ORD" + paddedDigits);
+                    if (paddedMatch.isPresent()) {
+                        return paddedMatch;
+                    }
+                }
+            } catch (NumberFormatException ex) {
+                log.warn("Invalid numeric PayOS order code: {}", rawOrderCode, ex);
+            }
+        }
+
+        String prefixed = rawOrderCode.startsWith("ORD") ? rawOrderCode : "ORD" + rawOrderCode;
+        return orderService.getOrderByCode(prefixed);
+    }
+
     @GetMapping("/payment-return")
     public RedirectView paymentReturn(@RequestParam Map<String, String> allParams) {
         try {
@@ -238,10 +296,8 @@ public class PaymentController {
                 return new RedirectView(buildFrontendRedirect("/payment-return?status=failed&message=Invalid%20order%20code"));
             }
 
-            String normalizedOrderCode = orderCode.startsWith("ORD") ? orderCode : "ORD" + orderCode;
-            // Lấy thông tin order
-            Order order = orderService.getOrderByCode(normalizedOrderCode)
-                    .orElseThrow(() -> new RuntimeException("Order not found with code: " + normalizedOrderCode));
+            Order order = resolveOrderByPayOSCode(orderCode)
+                    .orElseThrow(() -> new RuntimeException("Order not found with PayOS code: " + orderCode));
 
             // Kiểm tra trạng thái thanh toán
             if ("00".equals(code) && "PAID".equalsIgnoreCase(status)) {
@@ -296,21 +352,19 @@ public class PaymentController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing orderCode or status");
             }
 
-            String normalizedOrderCode = rawOrderCode.startsWith("ORD") ? rawOrderCode : "ORD" + rawOrderCode;
-
-            orderService.getOrderByCode(normalizedOrderCode).ifPresentOrElse(order -> {
+            resolveOrderByPayOSCode(rawOrderCode).ifPresentOrElse(order -> {
                 switch (paymentStatus.toUpperCase()) {
                     case "PAID" -> {
                         orderService.confirmBankTransferPayment(order.getOrderId());
-                        log.info("Order {} marked as PAID via webhook", normalizedOrderCode);
+                        log.info("Order {} marked as PAID via webhook", order.getOrderCode());
                     }
                     case "CANCELLED", "FAILED", "EXPIRED" -> {
                         orderService.rollbackOrderDueToPaymentFailure(order.getOrderId());
-                        log.info("Order {} rolled back due to webhook status {}", normalizedOrderCode, paymentStatus);
+                        log.info("Order {} rolled back due to webhook status {}", order.getOrderCode(), paymentStatus);
                     }
-                    default -> log.info("Webhook status {} for order {} ignored", paymentStatus, normalizedOrderCode);
+                    default -> log.info("Webhook status {} for order {} ignored", paymentStatus, order.getOrderCode());
                 }
-            }, () -> log.error("Order with code {} not found for webhook", normalizedOrderCode));
+            }, () -> log.error("Order with code {} not found for webhook", rawOrderCode));
 
             return ResponseEntity.ok("Webhook processed");
         } catch (Exception e) {
