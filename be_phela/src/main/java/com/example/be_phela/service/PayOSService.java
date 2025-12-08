@@ -71,8 +71,8 @@ public class PayOSService {
         String signature = generateSignature(request);
         request.setSignature(signature);
         
-        // Tạo final JSON body (đã có signature)
-        String jsonBody = objectMapper.writeValueAsString(request);
+        // CRITICAL: Use signatureMapper for final body to ensure same JSON format as signature
+        String jsonBody = signatureMapper.writeValueAsString(request);
         log.info("PayOS Request Body: {}", jsonBody);
 
         RequestBody body = RequestBody.create(
