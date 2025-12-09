@@ -92,6 +92,9 @@ public class SecurityConfig {
                             "/api/news/**",
                             "/api/job-postings/**",
                             "/api/branch/**",
+                            "/api/payment/payment-return",
+                            "/api/payment/payment-cancel",
+                            "/api/payment/payos-webhook",
                             "/ws/**",
                             "/error"
                     ).permitAll();

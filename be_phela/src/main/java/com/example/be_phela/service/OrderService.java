@@ -126,16 +126,21 @@ public class OrderService implements IOrderService {
             throw new RuntimeException("Order is not paid by bank transfer");
         }
         if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-            throw new RuntimeException("Payment already completed");
+             return;
+        }
+         if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new RuntimeException("Cannot confirm payment for a cancelled order");
         }
 
         order.setPaymentStatus(PaymentStatus.COMPLETED);
-        order.setStatus(OrderStatus.CONFIRMED);
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.CONFIRMED);
+        }
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
 
-    cartRepository.findByCustomer_CustomerId(order.getCustomer().getCustomerId())
-        .ifPresent(cart -> cartService.clearCartItems(cart.getCartId()));
+        cartRepository.findByCustomer_CustomerId(order.getCustomer().getCustomerId())
+            .ifPresent(cart -> cartService.clearCartItems(cart.getCartId()));
 
         // Tích điểm khi chuyển khoản thành công
         Customer customer = order.getCustomer();
