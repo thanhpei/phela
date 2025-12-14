@@ -22,7 +22,10 @@ public class NewsService {
 
     @Transactional
     public NewsResponseDTO createNews(String title, String summary, String content, MultipartFile thumbnail) throws IOException {
-        String thumbnailUrl = fileStorageService.storeNewsThumbnail(thumbnail);
+        String thumbnailUrl = null;
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            thumbnailUrl = fileStorageService.storeNewsThumbnail(thumbnail);
+        }
 
         LocalDateTime now = LocalDateTime.now();
 

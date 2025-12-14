@@ -27,12 +27,14 @@ export interface News {
 
 export interface NewsCreateDTO {
   title: string;
+  summary?: string;
   content: string;
   imageFile?: File;
 }
 
 export interface NewsUpdateDTO {
   title?: string;
+  summary?: string;
   content?: string;
   imageFile?: File;
 }
@@ -80,13 +82,22 @@ export const getNewsById = async (newsId: string) => {
   return response.data;
 };
 
-export const createNews = async (newsData: NewsCreateDTO) => {
-  const formData = new FormData();
-  formData.append('title', newsData.title);
-  formData.append('content', newsData.content);
+export const createNews = async (newsData: NewsCreateDTO | FormData) => {
+  let formData: FormData;
+  
+  if (newsData instanceof FormData) {
+    // If FormData is passed directly (from components)
+    formData = newsData;
+  } else {
+    // If NewsCreateDTO object is passed
+    formData = new FormData();
+    formData.append('title', newsData.title);
+    formData.append('summary', newsData.summary || '');
+    formData.append('content', newsData.content);
 
-  if (newsData.imageFile) {
-    formData.append('imageFile', newsData.imageFile);
+    if (newsData.imageFile) {
+      formData.append('thumbnail', newsData.imageFile);
+    }
   }
 
   const response = await api.post('/api/admin/news', formData, {
@@ -97,12 +108,20 @@ export const createNews = async (newsData: NewsCreateDTO) => {
   return response.data;
 };
 
-export const updateNews = async (newsId: string, newsData: NewsUpdateDTO) => {
-  const formData = new FormData();
-
-  if (newsData.title) formData.append('title', newsData.title);
-  if (newsData.content) formData.append('content', newsData.content);
-  if (newsData.imageFile) formData.append('imageFile', newsData.imageFile);
+export const updateNews = async (newsId: string, newsData: NewsUpdateDTO | FormData) => {
+  let formData: FormData;
+  
+  if (newsData instanceof FormData) {
+    // If FormData is passed directly (from components)
+    formData = newsData;
+  } else {
+    // If NewsUpdateDTO object is passed
+    formData = new FormData();
+    if (newsData.title) formData.append('title', newsData.title);
+    if (newsData.summary) formData.append('summary', newsData.summary);
+    if (newsData.content) formData.append('content', newsData.content);
+    if (newsData.imageFile) formData.append('thumbnail', newsData.imageFile);
+  }
 
   const response = await api.put(`/api/admin/news/${newsId}`, formData, {
     headers: {
