@@ -21,10 +21,13 @@ const BannerManager = () => {
     const [banners, setBanners] = useState<Banner[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [bannerToDelete, setBannerToDelete] = useState<string | null>(null);
     const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
     const [newBannerTitle, setNewBannerTitle] = useState<string>('');
     const [preview, setPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
     const [unauthorized, setUnauthorized] = useState<boolean>(false);
@@ -90,16 +93,31 @@ const BannerManager = () => {
         }
     };
 
-    const handleDelete = async (bannerId: string) => {
-        if (window.confirm("Bạn có chắc chắn muốn xóa banner này?")) {
-            try {
-                await deleteBanner(bannerId);
-                toast.success("Xóa banner thành công!");
-                fetchBanners();
-            } catch (error) {
-                toast.error("Xóa banner thất bại!");
-            }
+    const handleDeleteClick = (bannerId: string) => {
+        setBannerToDelete(bannerId);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!bannerToDelete) return;
+        
+        setIsDeleting(true);
+        try {
+            await deleteBanner(bannerToDelete);
+            toast.success("Xóa banner thành công!");
+            fetchBanners();
+            setIsDeleteModalOpen(false);
+            setBannerToDelete(null);
+        } catch (error) {
+            toast.error("Xóa banner thất bại!");
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    const handleDeleteCancel = () => {
+        setIsDeleteModalOpen(false);
+        setBannerToDelete(null);
     };
 
     const handleStatusChange = async (bannerId: string, newStatus: BannerStatus) => {
@@ -199,7 +217,7 @@ const BannerManager = () => {
                                                 <option value={BannerStatus.INACTIVE}>Không hoạt động</option>
                                             </select>
                                         </div>
-                                        <button onClick={() => handleDelete(banner.bannerId)} className="text-red-500 hover:text-red-700 font-semibold">Xóa</button>
+                                        <button onClick={() => handleDeleteClick(banner.bannerId)} className="text-red-500 hover:text-red-700 font-semibold">Xóa</button>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-2">Ngày tạo: {new Date(banner.createdAt).toLocaleDateString('vi-VN')}</p>
                                 </div>
@@ -251,6 +269,50 @@ const BannerManager = () => {
                     </div>
                 </form>
             </Modal>
+
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    {/* Backdrop with blur */}
+                    <div 
+                        className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm"
+                        onClick={handleDeleteCancel}
+                    ></div>
+                    
+                    {/* Modal Content */}
+                    <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+                        <div className="p-6">
+                            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                                Xác nhận xóa banner
+                            </h3>
+                            <p className="text-sm text-gray-500 text-center mb-6">
+                                Bạn có chắc chắn muốn xóa banner này? Hành động này không thể hoàn tác.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleDeleteCancel}
+                                    disabled={isDeleting}
+                                    className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleDeleteConfirm}
+                                    disabled={isDeleting}
+                                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isDeleting ? 'Đang xóa...' : 'Xóa'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
