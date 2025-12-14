@@ -4,8 +4,6 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.math.BigDecimal;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,7 +13,7 @@ public class ProductCreateDTO {
 
     @NotBlank(message = "Product name is required")
     @Size(min = 1, max = 255, message = "Product name must be between 1 and 255 characters")
-    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-_.,()]+$", message = "Product name contains invalid characters")
+    @Pattern(regexp = "^[\\p{L}\\p{N}\\s\\-_.,()]+$", message = "Product name contains invalid characters")
     private String productName;
 
     @Size(max = 1000, message = "Description cannot exceed 1000 characters")
