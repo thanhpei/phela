@@ -72,16 +72,11 @@ const BannerManager = () => {
             return;
         }
 
-        if (!newBannerTitle.trim()) {
-            toast.warn("Vui lòng nhập tiêu đề banner.");
-            return;
-        }
-
         setIsSubmitting(true);
 
         try {
             await createBanner({
-                title: newBannerTitle,
+                title: newBannerTitle || '', // Title is optional, backend doesn't use it
                 imageFile: newBannerFile
             });
             toast.success("Thêm banner mới thành công!");
@@ -89,6 +84,7 @@ const BannerManager = () => {
             fetchBanners(); // Tải lại danh sách
         } catch (error) {
             toast.error("Thêm banner thất bại!");
+            console.error(error);
         } finally {
             setIsSubmitting(false);
         }

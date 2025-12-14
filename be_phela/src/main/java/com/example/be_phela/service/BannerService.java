@@ -24,7 +24,15 @@ public class BannerService {
 
     @Transactional
     public BannerResponseDTO createBanner(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Banner image file is required");
+        }
+        
         String imageUrl = fileStorageService.storeBannerImage(file);
+        if (imageUrl == null) {
+            throw new IOException("Failed to upload banner image");
+        }
+        
         LocalDateTime now = LocalDateTime.now();
 
         Banner banner = Banner.builder()

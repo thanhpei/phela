@@ -62,8 +62,8 @@ export const getAllBannersAdmin = async (page: number = 0, size: number = 10) =>
 
 export const createBanner = async (bannerData: BannerCreateDTO) => {
     const formData = new FormData();
-    formData.append('title', bannerData.title);
-    formData.append('imageFile', bannerData.imageFile);
+    // Backend expects 'file' parameter, not 'imageFile'
+    formData.append('file', bannerData.imageFile);
 
     const response = await api.post('/api/admin/banners', formData, {
         headers: {
@@ -88,11 +88,9 @@ export const deleteBanner = async (bannerId: string) => {
 export const updateBanner = async (bannerId: string, bannerData: Partial<BannerCreateDTO>) => {
     const formData = new FormData();
 
-    if (bannerData.title) {
-        formData.append('title', bannerData.title);
-    }
+    // Backend expects 'file' parameter, not 'imageFile'
     if (bannerData.imageFile) {
-        formData.append('imageFile', bannerData.imageFile);
+        formData.append('file', bannerData.imageFile);
     }
 
     const response = await api.put(`/api/admin/banners/${bannerId}`, formData, {
